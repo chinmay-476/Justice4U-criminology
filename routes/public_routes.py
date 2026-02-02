@@ -555,6 +555,10 @@ def register_public_routes(app):
     def about_us():
         return render_template('about_us.html')
 
+    @app.route('/auth-center')
+    def auth_center():
+        return render_template('auth_center.html')
+
     @app.route('/contact-us', methods=['GET', 'POST'])
     def contact_us():
         if request.method == 'POST':
