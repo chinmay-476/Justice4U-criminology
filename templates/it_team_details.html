@@ -1,0 +1,86 @@
+{% extends 'super_admin_base.html' %}
+
+{% block title %}Admin Team Management - Super Admin Panel{% endblock %}
+
+{% block page_title %}Admin Team Management{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">Admin Team Management</li>
+{% endblock %}
+
+{% block content %}
+            <div class="row">
+                <div class="col-md-12">
+                    <!-- Admin Team Details Card -->
+                     <a href="{{ url_for('add_it_team') }}" class="btn btn-warning float-left">Add Admin Team</a>
+
+                    <!-- Admin Team Table -->
+                    <div class="card" >
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                Admin Team Details Table
+                                
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Sl No.</th>
+                                        <th>Name</th>
+                                        <th>Mobile No.</th>
+                                        <th>Email ID</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for member in team %}
+                                    <tr>
+                                        <td>{{ loop.index }}</td>
+                                        <td>{{ member.username }}</td>
+                                        <td>{{ member.mobile_no }}</td>
+                                        <td>{{ member.email }}</td>
+                                        <td>
+                                            <span class="badge badge-success">Active</span>
+                                        </td>
+                                        <td>
+                                            <a href="javascript:void(0);" class="btn btn-sm btn-danger" onclick="deleteTeam({{ member.id }})">
+                                                <i class="fa fa-trash"></i> Delete
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="6" class="text-center">No admin team members found.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+
+<script>
+function deleteTeam(teamId) {
+  if (confirm('Are you sure you want to delete this IT Team member?')) {
+    fetch(`/delete_it_team/${teamId}`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token }}'
+      }
+    })
+      .then(response => response.json())
+      .then(data => {
+        if(data.status === 'success') {
+          alert(data.message);
+          location.reload();
+        } else {
+          alert(data.message);
+        }
+      });
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,272 @@
+{% extends 'admin_base.html' %}
+{% include 'link.html' %}
+{% block page_title %}Contact Super Admin{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">Contact Super Admin</li>
+{% endblock %}
+
+{% block content %}
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-12">
+                    <!-- Contact Super Admin Form -->
+                    <div class="card card-primary">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-paper-plane"></i> Send Message to Super Admin</h3>
+                        </div>
+
+                        <form action="/contact_super_admin" method="post" id="contactForm">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label><i class="fas fa-tags"></i> Case Type:</label>
+                                            <select name="case_type" class="form-control" id="case_type_select" required onchange="loadCaseNumbers()">
+                                                <option value="">Select Case Type</option>
+                                                <option value="Crime">Crime</option>
+                                                <option value="Women">Women</option>
+                                                <option value="Child">Child</option>
+                                                <option value="Senior Citizen">Senior Citizen</option>
+                                                <option value="Traffic">Traffic</option>
+                                                <option value="Theft">Theft</option>
+                                                <option value="Civil">Civil</option>
+                                                <option value="Mental Harassment">Mental Harassment</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label><i class="fas fa-search"></i> Case Number:</label>
+                                            <select name="case_no" class="form-control" id="case_no_select" required disabled>
+                                                <option value="">First select a case type</option>
+                                            </select>
+                                            <small class="form-text text-muted">Available case numbers will appear after selecting case type</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="form-group">
+                                            <label><i class="fas fa-comment-alt"></i> Message to Super Admin:</label>
+                                            <textarea class="form-control" id="message" name="message" rows="6" 
+                                                placeholder="Enter your message to the Super Admin regarding this case..." required></textarea>
+                                            <small class="form-text text-muted">Please provide detailed information about your query or concern.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card-footer">
+                                <button type="submit" class="btn btn-primary" onclick="return validateContactForm()">
+                                    <i class="fas fa-paper-plane"></i> Send Message
+                                </button>
+                                <button type="reset" class="btn btn-warning" onclick="resetForm()">
+                                    <i class="fas fa-undo"></i> Reset
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {% if success %}
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i> Message sent to Super Admin successfully!
+                    </div>
+                    {% endif %}
+
+                    <!-- Super Admin Replies Section -->
+                    <div class="card card-success">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-reply"></i> Super Admin Replies</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <label><i class="fas fa-filter"></i> Filter by Case Type:</label>
+                                        <select class="form-control" id="filter_case_type" onchange="filterReplies()">
+                                            <option value="">All Case Types</option>
+                                            <option value="Crime">Crime</option>
+                                            <option value="Women">Women</option>
+                                            <option value="Child">Child</option>
+                                            <option value="Senior Citizen">Senior Citizen</option>
+                                            <option value="Traffic">Traffic</option>
+                                            <option value="Theft">Theft</option>
+                                            <option value="Civil">Civil</option>
+                                            <option value="Mental Harassment">Mental Harassment</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="repliesContainer">
+                                {% if super_admin_replies %}
+                                    {% for reply in super_admin_replies %}
+                                    <div class="card mb-3 reply-item" data-case-type="{{ reply.case_type }}">
+                                        <div class="card-header bg-light">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-0">
+                                                        <i class="fas fa-file-alt"></i> Case: {{ reply.case_no }} 
+                                                        <span class="badge badge-info">{{ reply.case_type }}</span>
+                                                    </h6>
+                                                </div>
+                                                <div class="col-md-6 text-right">
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-clock"></i> {{ reply.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-12">
+                                                    <h6><i class="fas fa-comment"></i> Your Message:</h6>
+                                                    <div class="alert alert-info">
+                                                        {{ reply.message }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% if reply.reply %}
+                                            <div class="row">
+                                                <div class="col-md-12">
+                                                    <h6><i class="fas fa-reply"></i> Super Admin Reply:</h6>
+                                                    <div class="alert alert-success">
+                                                        <strong>Super Admin:</strong> {{ reply.reply }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% else %}
+                                            <div class="row">
+                                                <div class="col-md-12">
+                                                    <div class="alert alert-warning">
+                                                        <i class="fas fa-hourglass-half"></i> Waiting for Super Admin reply...
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="text-center py-4">
+                                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                        <h5 class="text-muted">No messages sent yet</h5>
+                                        <p class="text-muted">Send your first message to Super Admin using the form above.</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    {% include 'scriptfile.html' %}
+
+    <script>
+      // Load case numbers based on selected case type
+      function loadCaseNumbers() {
+        const caseType = document.getElementById('case_type_select').value;
+        const caseNoSelect = document.getElementById('case_no_select');
+        
+        if (!caseType) {
+          caseNoSelect.disabled = true;
+          caseNoSelect.innerHTML = '<option value="">First select a case type</option>';
+          return;
+        }
+        
+        // Show loading state
+        caseNoSelect.disabled = true;
+        caseNoSelect.innerHTML = '<option value="">Loading case numbers...</option>';
+        
+        // Make AJAX request to get case numbers
+        $.ajax({
+          url: '/get_case_numbers',
+          method: 'POST',
+          data: {
+            'case_type': caseType,
+            'csrf_token': '{{ csrf_token }}'
+          },
+          success: function(response) {
+            caseNoSelect.disabled = false;
+            caseNoSelect.innerHTML = '<option value="">Select Case Number</option>';
+            
+            if (response.success && response.case_numbers.length > 0) {
+              response.case_numbers.forEach(function(caseNo) {
+                const option = document.createElement('option');
+                option.value = caseNo;
+                option.textContent = caseNo;
+                caseNoSelect.appendChild(option);
+              });
+            } else {
+              caseNoSelect.innerHTML = '<option value="">No cases found for this type</option>';
+            }
+          },
+          error: function() {
+            caseNoSelect.disabled = false;
+            caseNoSelect.innerHTML = '<option value="">Error loading case numbers</option>';
+            alert('Error loading case numbers. Please try again.');
+          }
+        });
+      }
+      
+      // Validate contact form
+      function validateContactForm() {
+        const caseType = document.getElementById('case_type_select').value;
+        const caseNo = document.getElementById('case_no_select').value;
+        const message = document.getElementById('message').value;
+        
+        if (!caseType) {
+          alert('Please select a case type.');
+          return false;
+        }
+        
+        if (!caseNo) {
+          alert('Please select a case number.');
+          return false;
+        }
+        
+        if (message.trim() === '') {
+          alert('Please enter a message to Super Admin.');
+          return false;
+        }
+        
+        if (message.trim().length < 10) {
+          alert('Message must be at least 10 characters long.');
+          return false;
+        }
+        
+        return true;
+      }
+      
+      // Reset form
+      function resetForm() {
+        document.getElementById('contactForm').reset();
+        document.getElementById('case_no_select').disabled = true;
+        document.getElementById('case_no_select').innerHTML = '<option value="">First select a case type</option>';
+      }
+      
+      // Filter replies by case type
+      function filterReplies() {
+        const filterValue = document.getElementById('filter_case_type').value;
+        const replyItems = document.querySelectorAll('.reply-item');
+        
+        replyItems.forEach(function(item) {
+          if (!filterValue || item.getAttribute('data-case-type') === filterValue) {
+            item.style.display = 'block';
+          } else {
+            item.style.display = 'none';
+          }
+        });
+      }
+      
+      // Auto-refresh replies every 30 seconds
+      setInterval(function() {
+        // This will be implemented later when we add the reply functionality
+        console.log('Checking for new replies...');
+      }, 30000);
+    </script>
+
+{% endblock %}

@@ -1,0 +1,156 @@
+{% extends 'admin_base.html' %}
+{% include 'link.html' %}
+{% block page_title %}Add User Complain{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">Add User Complain</li>
+{% endblock %}
+
+{% block content %}
+          <div class="container-fluid">
+            <div class="card card-primary">
+              <div class="card-header">
+                <h3 class="card-title">Complaint Form</h3>
+              </div>
+              <form action="{{ url_for('submit_complain') }}" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+  <label>Name</label>
+  <input type="text" name="username" class="form-control" required />
+
+  <label>Date of Birth</label>
+  <input type="date" name="dob" class="form-control" required />
+
+  <label>Aadhaar Number</label>
+  <input type="text" name="aadhaar_no" class="form-control" required />
+
+  <button type="submit" class="btn btn-primary mt-3">Check Record</button>
+</form>
+
+{% if accused %}
+<div class="mt-4">
+  <h4>Accused Details Found</h4>
+  <table class="table table-bordered table-striped w-75">
+    <tbody>
+      <tr>
+        <th>Case No</th>
+        <td>{{ accused.case_no }}</td>
+      </tr>
+      <tr>
+        <th>Date of Arrest</th>
+        <td>{{ accused.date_of_arrest }}</td>
+      </tr>
+      <tr>
+        <th>Police Station</th>
+        <td>{{ accused.ps }}</td>
+      </tr>
+      <tr>
+        <th>Place of Arrest</th>
+        <td>{{ accused.place_of_arrest }}</td>
+      </tr>
+      <!-- Add more rows as needed -->
+    </tbody>
+  </table>
+</div>
+{% elif searched %}
+<div class="mt-4 alert alert-warning">
+  No record found matching the details entered.
+</div>
+{% endif %}
+
+
+            </div>
+          </div>
+    {% include 'scriptfile.html' %}
+
+    <script>
+      $(document).ready(function () {
+        $("#dept").change(function () {
+          var dep = $("#dept").val();
+
+          $.ajax({
+            url: "#",
+            data: {
+              dept: dep,
+            },
+            type: "GET",
+            dataType: "json",
+            success: function (data) {
+              $("#user").empty();
+              $("#user").append('<option value="">Select a role</option>');
+
+              $.each(data, function (index, user) {
+                $("#user").append($("<option></option>").val(user[0]).html(user[1]));
+              });
+            },
+          });
+        });
+
+        $("#user").change(function () {
+          var dep = $("#user").val();
+
+          $.ajax({
+            url: "#",
+            data: {
+              user: dep,
+            },
+            type: "GET",
+            dataType: "json",
+            success: function (data) {
+              $("#email").val(data);
+            },
+          });
+        });
+
+        $("#complain_type").change(function () {
+          var complainTypeId = $(this).val();
+
+          $.ajax({
+            url: "#",
+            data: {
+              complain_type_id: complainTypeId,
+            },
+            type: "GET",
+            dataType: "json",
+            success: function (data) {
+              $("#complain_desc").empty();
+              $("#complain_desc").append('<option value="">Select Description</option>');
+
+              $.each(data, function (index, item) {
+                $("#complain_desc").append(
+                  $("<option></option>").val(item[0]).html(item[1])
+                );
+              });
+            },
+            error: function (xhr, status, error) {
+              console.error("Error fetching descriptions:", error);
+            },
+          });
+        });
+      });
+    </script>
+    <script>
+  $(document).ready(function () {
+    $("#user").change(function () {
+      var userId = $(this).val();
+      if (!userId) {
+        $("#email").val('');
+        return;
+      }
+      $.ajax({
+        url: "#",
+        data: { user: userId },
+        type: "GET",
+        dataType: "json",
+        success: function (data) {
+          $("#email").val(data);
+        },
+        error: function () {
+          $("#email").val('');
+        }
+      });
+    });
+  });
+</script>
+
+{% endblock %}

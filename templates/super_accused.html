@@ -1,0 +1,619 @@
+{% extends 'super_admin_base.html' %}
+{% include 'link.html' %}
+{% block page_title %}Accused Details{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">Accused Details</li>
+{% endblock %}
+
+{% block content %}
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-md-12">
+
+
+            <!-- User Table -->
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">
+                  Accused Details Table
+                  <a href="{{ url_for('super_add_user') }}" class="btn btn-warning">Add Accused</a>
+                </h3>
+              </div>
+              <div class="card-body">
+                <table class="table table-striped">
+                  <thead>
+                    <tr>
+                      <th>Sl no</th>
+                      <th>Full Name</th>
+                      <th>Relative Name</th>
+                      <th>Mobile. no</th>
+                      <th>Email id</th>
+                      <th>Occupation</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+  {% for person in accused %}
+  <tr>
+    <td>{{ loop.index }}</td>
+    <td>{{ person.username }}</td>
+    <td>{{ person.relative_name }}</td>
+    <td>{{ person.mobile }}</td>
+    <td>{{ person.email_id }}</td>
+    <td>{{ person.occupation }}</td>
+    <td>
+      <!-- Add edit/delete links as needed -->
+      <button type="button" class="btn btn-sm btn-secondary"
+              data-username="{{ person.username }}"
+              data-relative-name="{{ person.relative_name }}"
+              data-dob="{{ person.dob }}"
+              data-gender="{{ person.gender }}"
+              data-mobile="{{ person.mobile }}"
+              data-email="{{ person.email_id }}"
+              data-occupation="{{ person.occupation }}"
+              data-nationality="{{ person.nationality }}"
+              data-permanent-address="{{ person.permanent_address }}"
+              data-pincode="{{ person.pincode }}"
+              data-aadhaar="{{ person.aadhaar_no }}"
+              data-case-no="{{ person.case_no }}"
+              data-fir-no="{{ person.fir_no }}"
+              data-ps="{{ person.ps }}"
+              data-bail-status="{{ person.bail_status }}"
+              data-remand-custody="{{ person.remand_custody }}"
+              data-medical-report="{{ person.medical_report }}"
+              data-sections="{{ person.sections }}"
+              data-confession-statement="{{ person.confession_statement }}"
+              data-accused-photo="{{ person.accused_photo }}"
+              onclick="showAccusedDetails(this)">
+        <i class="fa fa-user"></i> Details
+      </button>
+      <a href="{{ url_for('super_accused_edit', accused_id=person.id) }}" class="btn btn-sm btn-primary">
+        <i class="fa fa-edit"></i> Edit
+      </a>
+      <a href="javascript:void(0);" class="btn btn-sm btn-danger" onclick="deleteAccused({{ person.id }})">
+        <i class="fa fa-trash"></i> Delete
+      </a>
+      {% if person.sections %}
+      <button type="button" class="btn btn-sm btn-info"
+              data-username="{{ person.username }}"
+              data-relative-name="{{ person.relative_name }}"
+              data-dob="{{ person.dob }}"
+              data-gender="{{ person.gender }}"
+              data-mobile="{{ person.mobile }}"
+              data-email="{{ person.email_id }}"
+              data-occupation="{{ person.occupation }}"
+              data-nationality="{{ person.nationality }}"
+              data-permanent-address="{{ person.permanent_address }}"
+              data-pincode="{{ person.pincode }}"
+              data-aadhaar="{{ person.aadhaar_no }}"
+              data-case-no="{{ person.case_no }}"
+              data-fir-no="{{ person.fir_no }}"
+              data-ps="{{ person.ps }}"
+              data-remand-custody="{{ person.remand_custody }}"
+              data-medical-report="{{ person.medical_report }}"
+              data-sections="{{ person.sections }}"
+              data-confession-statement="{{ person.confession_statement }}"
+              data-accused-photo="{{ person.accused_photo }}"
+              onclick="showPunishmentDetails('{{ person.sections }}', this)">
+        <i class="fa fa-gavel"></i> Punishment Details
+      </button>
+      {% endif %}
+    </td>
+  </tr>
+  {% else %}
+  <tr>
+    <td colspan="8">No accused records found.</td>
+  </tr>
+  {% endfor %}
+</tbody>
+
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+<!-- Accused Full Details Modal -->
+<div class="modal fade" id="accusedDetailsModal" tabindex="-1" role="dialog" aria-labelledby="accusedDetailsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="accusedDetailsModalLabel">Accused Details</h5>
+        <button type="button" class="close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close" onclick="closeAccusedDetailsModal()">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="accusedDetailsContent"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal" onclick="closeAccusedDetailsModal()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Punishment Details Modal -->
+<div class="modal fade" id="punishmentModal" tabindex="-1" role="dialog" aria-labelledby="punishmentModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="punishmentModalLabel">Punishment Details</h5>
+        <button type="button" class="close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close" onclick="closeModal()">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="punishmentContent">
+          <div class="text-center">
+            <div class="spinner-border" role="status">
+              <span class="sr-only">Loading...</span>  
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-success" onclick="downloadPunishmentPDF()"><i class="fa fa-file-pdf-o"></i> Download PDF</button>
+        <button type="button" class="btn btn-primary" onclick="printPunishment()"><i class="fa fa-print"></i> Print</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+{% include 'scriptfile.html' %}
+
+<!-- jsPDF and html2canvas for PDF export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNa5H0Pj1kP8C/X3WJr8nF0o2wWgFQy7z8yUqfTqY0oQm3m3u1tQ3gqpjrG7d1qf8k2vZ8oJ9c4n2J8m7k8zjA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-5B+5W1mO3XzK3CkF1pQ1w3I8eN8Qp3b+2kqk1U2f+0bGk8yQq8lqE2w2lQm+YqvVd2t4nN3fJq4m6m2H8XQOHw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script>
+  function validateForm() {
+    var name = document.getElementById("name").value;
+    if (name == "") {
+      alert("Name must be filled out");
+      return false;
+    }
+    return true;
+  }
+
+  document.getElementById("submit")?.addEventListener("click", function(event) {
+    if (!validateForm()) {
+      event.preventDefault();
+    }
+  });
+
+  document.getElementById("reset")?.addEventListener("click", function() {
+    document.getElementById("name").value = "";
+  });
+
+  document.getElementById("name")?.addEventListener("input", function() {
+    if (this.value.trim() === "") {
+      this.classList.add("is-invalid");
+    } else {
+      this.classList.remove("is-invalid");
+    }
+  });
+
+  function showPunishmentDetails(sectionId, btnEl) {
+    // Show the modal
+    $('#punishmentModal').modal('show');
+    
+    // Reset content to loading state
+    $('#punishmentContent').html(`
+      <div class="text-center">
+        <div class="spinner-border" role="status">
+          <span class="sr-only">Loading...</span>
+        </div>
+      </div>
+    `);
+    
+    // Collect accused details from the clicked button
+    const accused = btnEl ? {
+      username: btnEl.getAttribute('data-username') || '',
+      relative_name: btnEl.getAttribute('data-relative-name') || '',
+      dob: btnEl.getAttribute('data-dob') || '',
+      gender: btnEl.getAttribute('data-gender') || '',
+      mobile: btnEl.getAttribute('data-mobile') || '',
+      email: btnEl.getAttribute('data-email') || '',
+      occupation: btnEl.getAttribute('data-occupation') || '',
+      nationality: btnEl.getAttribute('data-nationality') || '',
+      permanent_address: btnEl.getAttribute('data-permanent-address') || '',
+      case_no: btnEl.getAttribute('data-case-no') || '',
+      fir_no: btnEl.getAttribute('data-fir-no') || '',
+      ps: btnEl.getAttribute('data-ps') || '',
+      bail_status: btnEl.getAttribute('data-bail-status') || '',
+      remand_custody: btnEl.getAttribute('data-remand-custody') || '',
+      medical_report: btnEl.getAttribute('data-medical-report') || '',
+      sections: btnEl.getAttribute('data-sections') || '',
+      confession_statement: btnEl.getAttribute('data-confession-statement') || '',
+      accused_photo: btnEl.getAttribute('data-accused-photo') || ''
+    } : null;
+    
+    // Make AJAX request to get punishment details
+    $.ajax({
+      url: '/get_punishment_details',
+      method: 'POST',
+      data: {
+        'section_id': sectionId,
+        'csrf_token': '{{ csrf_token }}'
+      },
+      success: function(response) {
+        if (response.success && Array.isArray(response.items) && response.items.length) {
+          const valueOrNA = (v) => (v && v !== 'undefined' ? v : 'N/A');
+          const calcAge = (dobStr) => {
+            if (!dobStr || dobStr === 'undefined') return 'N/A';
+            const d = new Date(dobStr);
+            if (isNaN(d.getTime())) return 'N/A';
+            const diff = Date.now() - d.getTime();
+            const ageDt = new Date(diff);
+            return Math.abs(ageDt.getUTCFullYear() - 1970);
+          };
+
+          const accusedBlock = accused ? `
+            <div class="mb-4 p-3 border rounded">
+              <h5 class="mb-3">Accused Details</h5>
+              <div class="row">
+                <div class="col-md-8">
+                  <div class="row">
+                    <div class="col-md-6"><strong>Full Name:</strong> ${valueOrNA(accused.username)}</div>
+                    <div class="col-md-6"><strong>Relative Name:</strong> ${valueOrNA(accused.relative_name)}</div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6"><strong>Age:</strong> ${calcAge(accused.dob)}</div>
+                    <div class="col-md-6"><strong>Gender:</strong> ${valueOrNA(accused.gender)}</div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6"><strong>Nationality:</strong> ${valueOrNA(accused.nationality)}</div>
+                    <div class="col-md-6"><strong>Mobile:</strong> ${valueOrNA(accused.mobile)}</div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6"><strong>Pincode:</strong> ${valueOrNA(accused.pincode)}</div>
+                    <div class="col-md-6"><strong>Aadhaar Number:</strong> ${valueOrNA(accused.aadhaar_no)}</div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6"><strong>Email:</strong> ${valueOrNA(accused.email)}</div>
+                    <div class="col-md-6"><strong>Address:</strong> ${valueOrNA(accused.permanent_address)}</div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6"><strong>Case no:</strong> ${valueOrNA(accused.case_no)}</div>
+                    <div class="col-md-6"><strong>FIR no:</strong> ${valueOrNA(accused.fir_no)}</div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6"><strong>Police station:</strong> ${valueOrNA(accused.ps)}</div>
+                    <div class="col-md-6"><strong>Sections:</strong> ${valueOrNA(accused.sections)}</div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-12"><strong>Remand Custody:</strong> ${valueOrNA(accused.remand_custody)}</div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-12"><strong>Medical report:</strong> ${valueOrNA(accused.medical_report)}</div>
+                  </div>
+                </div>
+                <div class="col-md-4 text-center">
+                  ${accused.accused_photo ? 
+                    `<img src="/uploads/${accused.accused_photo}" alt="Accused Photo" class="img-fluid rounded border" style="max-height: 200px; max-width: 200px;">` : 
+                    `<div class="border rounded d-flex align-items-center justify-content-center" style="height: 200px; background-color: #f8f9fa;">
+                      <span class="text-muted">No Photo Available</span>
+                    </div>`
+                  }
+                  <div class="mt-2"><strong>Accused Photo</strong></div>
+                </div>
+              </div>
+            </div>
+          ` : '';
+          
+          const blocks = response.items.map(function(item) {
+            return `
+              <div class="mb-3 p-3 border rounded">
+                <div class="row">
+                  <div class="col-md-6">
+                    <h6><strong>Category:</strong></h6>
+                    <p>${item.category}</p>
+                  </div>
+                  <div class="col-md-6">
+                    <h6><strong>Sections:</strong></h6>
+                    <p>${item.sections}</p>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-12">
+                    <h6><strong>Offence:</strong></h6>
+                    <p>${item.offence}</p>
+                  </div>
+                </div>
+                ${item.possible_punishments ? `
+                <div class="row">
+                  <div class="col-md-12">
+                    <h6><strong>Possible Punishments:</strong></h6>
+                    <p>${item.possible_punishments}</p>
+                  </div>
+                </div>` : ''}
+                <div class="row">
+                  <div class="col-md-12">
+                    <h6><strong>Minimum Fine:</strong></h6>
+                    <p class="text-danger"><strong>${item.minimum_fine}</strong></p>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          const signatureBlock = `
+            <div class="mt-4 p-3 border rounded">
+              <div class="row">
+                <div class="col-md-8">
+                  <strong>Statement:</strong>
+                  <p>${valueOrNA(accused.confession_statement)}</p>
+                </div>
+              </div>
+            </div>
+          `;
+
+          const finalHtml = `${accusedBlock}${blocks}${signatureBlock}`;
+          $('#punishmentContent').html(finalHtml);
+        } else {
+          $('#punishmentContent').html(`
+            <div class="alert alert-warning">
+              <i class="fas fa-exclamation-triangle"></i>
+              ${response.message || 'No punishment details found for the provided sections.'}
+            </div>
+          `);
+        }
+      },
+      error: function() {
+        $('#punishmentContent').html(`
+          <div class="alert alert-danger">
+            <i class="fas fa-exclamation-circle"></i>
+            Error loading punishment details. Please try again.
+          </div>
+        `);
+      }
+    });
+  }
+
+  function showAccusedDetails(btnEl) {
+    const valueOrNA = (v) => (v && v !== 'undefined' ? v : 'N/A');
+    const accused = {
+      username: btnEl.getAttribute('data-username') || '',
+      relative_name: btnEl.getAttribute('data-relative-name') || '',
+      dob: btnEl.getAttribute('data-dob') || '',
+      gender: btnEl.getAttribute('data-gender') || '',
+      mobile: btnEl.getAttribute('data-mobile') || '',
+      email: btnEl.getAttribute('data-email') || '',
+      occupation: btnEl.getAttribute('data-occupation') || '',
+      nationality: btnEl.getAttribute('data-nationality') || '',
+      permanent_address: btnEl.getAttribute('data-permanent-address') || '',
+      pincode: btnEl.getAttribute('data-pincode') || '',
+      aadhaar_no: btnEl.getAttribute('data-aadhaar') || '',
+      case_no: btnEl.getAttribute('data-case-no') || '',
+      fir_no: btnEl.getAttribute('data-fir-no') || '',
+      ps: btnEl.getAttribute('data-ps') || '',
+      bail_status: btnEl.getAttribute('data-bail-status') || '',
+      remand_custody: btnEl.getAttribute('data-remand-custody') || '',
+      medical_report: btnEl.getAttribute('data-medical-report') || '',
+      sections: btnEl.getAttribute('data-sections') || '',
+      confession_statement: btnEl.getAttribute('data-confession-statement') || '',
+      accused_photo: btnEl.getAttribute('data-accused-photo') || ''
+    };
+
+    const html = `
+      <div class="p-2">
+        <div class="row">
+          <div class="col-md-8">
+            <div class="row"><div class="col-md-6"><strong>Full Name:</strong> ${valueOrNA(accused.username)}</div><div class="col-md-6"><strong>Relative Name:</strong> ${valueOrNA(accused.relative_name)}</div></div>
+            <div class="row"><div class="col-md-6"><strong>DOB:</strong> ${valueOrNA(accused.dob)}</div><div class="col-md-6"><strong>Gender:</strong> ${valueOrNA(accused.gender)}</div></div>
+            <div class="row"><div class="col-md-6"><strong>Mobile:</strong> ${valueOrNA(accused.mobile)}</div><div class="col-md-6"><strong>Email:</strong> ${valueOrNA(accused.email)}</div></div>
+            <div class="row"><div class="col-md-6"><strong>Occupation:</strong> ${valueOrNA(accused.occupation)}</div><div class="col-md-6"><strong>Nationality:</strong> ${valueOrNA(accused.nationality)}</div></div>
+            <div class="row"><div class="col-md-12"><strong>Address:</strong> ${valueOrNA(accused.permanent_address)}</div></div>
+            <div class="row"><div class="col-md-6"><strong>Pincode:</strong> ${valueOrNA(accused.pincode)}</div><div class="col-md-6"><strong>Aadhaar No:</strong> ${valueOrNA(accused.aadhaar_no)}</div></div>
+            <div class="row"><div class="col-md-6"><strong>Case No:</strong> ${valueOrNA(accused.case_no)}</div><div class="col-md-6"><strong>FIR No:</strong> ${valueOrNA(accused.fir_no)}</div></div>
+            <div class="row"><div class="col-md-6"><strong>Police Station:</strong> ${valueOrNA(accused.ps)}</div><div class="col-md-6"><strong>Bail Status:</strong> ${valueOrNA(accused.bail_status)}</div></div>
+            <div class="row"><div class="col-md-12"><strong>Remand Custody:</strong> ${valueOrNA(accused.remand_custody)}</div></div>
+            <div class="row"><div class="col-md-12"><strong>Medical Report:</strong> ${valueOrNA(accused.medical_report)}</div></div>
+            <div class="row"><div class="col-md-12"><strong>Sections:</strong> ${valueOrNA(accused.sections)}</div></div>
+            <div class="row"><div class="col-md-12"><strong>Statement:</strong> ${valueOrNA(accused.confession_statement)}</div></div>
+          </div>
+          <div class="col-md-4 text-center">
+            ${accused.accused_photo ? `<img src="/uploads/${accused.accused_photo}" alt="Accused Photo" class="img-fluid rounded border" style="max-height: 200px; max-width: 200px;">` : `<div class="border rounded d-flex align-items-center justify-content-center" style="height: 200px; background-color: #f8f9fa;"><span class="text-muted">No Photo Available</span></div>`}
+            <div class="mt-2"><strong>Accused Photo</strong></div>
+          </div>
+        </div>
+      </div>
+    `;
+    $('#accusedDetailsContent').html(html);
+    $('#accusedDetailsModal').modal('show');
+  }
+
+  function closeAccusedDetailsModal() {
+    $('#accusedDetailsModal').modal('hide');
+  }
+
+  // Custom function to close modal
+  function closeModal() {
+    $('#punishmentModal').modal('hide');
+  }
+
+  // Close modal when clicking outside (backdrop)
+  $('#punishmentModal').on('click', function(e) {
+    if (e.target === this) {
+      closeModal();
+    }
+  });
+
+  // Close modal with Escape key
+  $(document).on('keydown', function(e) {
+    if (e.key === 'Escape' && $('#punishmentModal').hasClass('show')) {
+      closeModal();
+    }
+  });
+
+  function printPunishment() {
+    const printContents = document.getElementById('punishmentContent')?.innerHTML || '';
+    if (!printContents) { return; }
+    const originalTitle = document.title;
+    document.title = 'Punishment Details';
+    const win = window.open('', '', 'height=800,width=800');
+    win.document.write('<html><head><title>Punishment Details</title>');
+    win.document.write('<style>body{font-family:Arial,Helvetica,sans-serif;padding:16px;} .border{border:1px solid #ccc;} .rounded{border-radius:6px;} h5{margin:0 0 10px;} .row{display:flex;flex-wrap:wrap;margin-bottom:8px;} .col-md-6{flex:0 0 50%;max-width:50%;} .col-md-12{flex:0 0 100%;max-width:100%;} .text-danger{color:#dc3545;} hr{margin-top:0;}</style>');
+    win.document.write('</head><body>');
+    win.document.write(printContents);
+    win.document.write('</body></html>');
+    win.document.close();
+    win.focus();
+    win.print();
+    win.close();
+    document.title = originalTitle;
+  }
+
+  async function downloadPunishmentPDF() {
+    const container = document.getElementById('punishmentContent');
+    if (!container) return;
+
+    // Ensure libraries are available (try multiple CDNs)
+    await ensurePdfLibs();
+    const { jsPDF } = window.jspdf || {};
+    if (!jsPDF || !window.html2canvas) {
+      alert('PDF libraries failed to load. Please check your internet connection.');
+      return;
+    }
+
+    // Temporarily ensure white background for proper rendering
+    const previousBg = container.style.backgroundColor;
+    container.style.backgroundColor = '#ffffff';
+
+    // Add some padding to the container for better PDF layout
+    const originalPadding = container.style.padding;
+    container.style.padding = '20px';
+
+    const canvas = await html2canvas(container, { 
+      scale: 2, 
+      useCORS: true, 
+      backgroundColor: '#ffffff',
+      logging: false,
+      allowTaint: true
+    });
+    const imgData = canvas.toDataURL('image/png');
+
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    const imgWidth = pageWidth - 20; // margins 10mm on each side
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    // If content fits on one page, add it directly
+    if (imgHeight <= pageHeight - 20) {
+      pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight, undefined, 'FAST');
+    } else {
+      // For multi-page content, split the image properly
+      let yPosition = 10;
+      let remainingHeight = imgHeight;
+      let sourceY = 0;
+      
+      while (remainingHeight > 0) {
+        const availableHeight = pageHeight - yPosition - 10; // 10mm bottom margin
+        const heightToAdd = Math.min(remainingHeight, availableHeight);
+        
+        // Calculate the source rectangle for this portion
+        const sourceHeight = (heightToAdd * canvas.height) / imgHeight;
+        
+        // Create a temporary canvas for this portion
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = sourceHeight;
+        
+        // Draw the portion of the original canvas
+        tempCtx.drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
+        
+        // Convert to image data
+        const portionImgData = tempCanvas.toDataURL('image/png');
+        
+        // Add to PDF
+        pdf.addImage(portionImgData, 'PNG', 10, yPosition, imgWidth, heightToAdd, undefined, 'FAST');
+        
+        // Update positions
+        remainingHeight -= heightToAdd;
+        sourceY += sourceHeight;
+        
+        // Add new page if there's more content
+        if (remainingHeight > 0) {
+          pdf.addPage();
+          yPosition = 10;
+        }
+      }
+    }
+
+    // Generate filename with timestamp
+    const now = new Date();
+    const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
+    const filename = `punishment_details_${timestamp}.pdf`;
+
+    pdf.save(filename);
+
+    // Restore original styles
+    container.style.backgroundColor = previousBg;
+    container.style.padding = originalPadding;
+  }
+
+  function loadScript(src) {
+    return new Promise(function(resolve, reject) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.onload = function() { resolve(); };
+      s.onerror = function() { reject(new Error('Failed to load ' + src)); };
+      document.head.appendChild(s);
+    });
+  }
+
+  async function ensurePdfLibs() {
+    // html2canvas check and load if needed
+    if (typeof window.html2canvas === 'undefined') {
+      const html2canvasSources = [
+        'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
+        'https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js'
+      ];
+      for (let i = 0; i < html2canvasSources.length && typeof window.html2canvas === 'undefined'; i++) {
+        try { await loadScript(html2canvasSources[i]); } catch (e) {}
+      }
+    }
+
+    // jsPDF check and load if needed
+    if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
+      const jsPdfSources = [
+        'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
+        'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js'
+      ];
+      for (let i = 0; i < jsPdfSources.length && (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined'); i++) {
+        try { await loadScript(jsPdfSources[i]); } catch (e) {}
+      }
+    }
+  }
+</script>
+
+<script>
+function deleteAccused(id) {
+  if (!confirm('Are you sure you want to delete this accused?')) return;
+  fetch(`/super_accused/delete/${id}`, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': '{{ csrf_token }}'
+    }
+  }).then(r => r.json()).then(data => {
+    if (data.status === 'success') {
+      alert(data.message);
+      location.reload();
+    } else {
+      alert(data.message || 'Failed to delete');
+    }
+  }).catch(() => alert('Request failed'));
+}
+</script>
+
+{% endblock %}

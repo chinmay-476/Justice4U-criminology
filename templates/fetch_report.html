@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% include 'link.html' %}
+{% block content %}
+<div class="wrapper">
+
+  <!-- Navbar -->
+
+  <!-- Content Wrapper -->
+    <!-- Page header -->
+    <div class="content-header">
+      <div class="container-fluid">
+        <div class="row mb-2">
+          <div class="col-sm-6">
+            <h1 class="m-0">CASE DATA</h1>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search Form -->
+    <section class="content">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-md-12">
+            <div class="card card-primary">
+              <div class="card-header">
+                <h3 class="card-title">Filter by Dates</h3>
+              </div>
+
+              <form action="{{ url_for('fetch_report') }}" method="post" onsubmit="return validateForm()">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}"> 
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col-md-4">
+                      <label>From Date:</label>
+                      <input type="date" class="form-control" id="from_date" name="from_date" value="{{ request.form.from_date }}" required>
+                    </div>
+                    <div class="col-md-4">
+                      <label>To Date:</label>
+                      <input type="date" class="form-control" id="to_date" name="to_date" value="{{ request.form.to_date }}" required>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card-footer">
+                  <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-search"></i> Search
+                  </button>
+                  <button type="reset" class="btn btn-warning">Reset</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Complaint Table -->
+        <div class="row mt-4">
+          <div class="col-md-12">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Complain Details Table</h3>
+              </div>
+              <div class="card-body">
+                <table class="table table-striped">
+                  <thead>
+                    <tr>
+                      <th>Sl no</th>
+                      <th>Department Name</th>
+                      <th>Description</th>
+                      <th>Arrest Date</th>
+                      <th>Complain Status</th>
+                      <th>FIR no</th>
+                      <th>Case no</th>
+                      <th>Sections</th>
+                    </tr>
+                  </thead>         
+                  <tbody>
+{% if results %}
+    {% for accused, complaint in results %}
+    <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ complaint.complain_type }}</td>
+        <td>{{ complaint.description }}</td>
+        <td>{{ accused.date_of_arrest }}</td>
+        <td>{{ complaint.status }}</td>
+        <td>{{ accused.fir_no }}</td>
+        <td>{{ accused.case_no }}</td>
+        <td>{{ accused.sections }}</td>
+        <!-- Add other fields as needed -->
+    </tr>
+    {% endfor %}
+{% else %}
+    <tr>
+        <td colspan="6" class="text-center">No complaints found.</td>
+    </tr>
+{% endif %}
+</tbody>
+
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  <aside class="control-sidebar control-sidebar-dark"></aside>
+</div>
+
+{% include 'scriptfile.html' %}
+<script>
+  function validateForm() {
+    var fromDate = document.getElementById("from_date").value;
+    var toDate = document.getElementById("to_date").value;
+    if (fromDate === "" || toDate === "") {
+      alert("Please fill out both From Date and To Date.");
+      return false;
+    }
+    return true;
+  }
+</script>
+
+{% endblock %}

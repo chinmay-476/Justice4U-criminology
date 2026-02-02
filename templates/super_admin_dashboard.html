@@ -1,0 +1,286 @@
+{% extends "super_admin_base.html" %}
+
+{% block title %}Super Admin Dashboard - Justice4U{% endblock %}
+
+{% block page_title %}Super Admin Dashboard{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">Dashboard</li>
+{% endblock %}
+
+{% block content %}
+<!-- Dashboard Stats -->
+<div class="row">
+    <div class="col-lg-3 col-6">
+        <div class="stats-card">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <div class="stats-number">{{ total_departments or 0 }}</div>
+                    <div class="stats-label">Total Departments</div>
+                </div>
+                <div class="stats-icon">
+                    <i class="fas fa-building"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="stats-card">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <div class="stats-number">{{ total_admin_teams or 0 }}</div>
+                    <div class="stats-label">Admin Teams</div>
+                </div>
+                <div class="stats-icon">
+                    <i class="fas fa-user-tie"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="stats-card">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <div class="stats-number">{{ total_users or 0 }}</div>
+                    <div class="stats-label">System Users</div>
+                </div>
+                <div class="stats-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="stats-card">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <div class="stats-number">{{ total_messages or 0 }}</div>
+                    <div class="stats-label">Pending Messages</div>
+                </div>
+                <div class="stats-icon">
+                    <i class="fas fa-envelope"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-chart-line me-2"></i>System Overview
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Component</th>
+                                <th>Status</th>
+                                <th>Last Updated</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><i class="fas fa-database me-2"></i>Database</td>
+                                <td><span class="badge bg-success">Online</span></td>
+                                <td>Just now</td>
+                                <td><a href="#" class="btn btn-sm btn-outline-primary">Manage</a></td>
+                            </tr>
+                            <tr>
+                                <td><i class="fas fa-server me-2"></i>Application Server</td>
+                                <td><span class="badge bg-success">Running</span></td>
+                                <td>2 minutes ago</td>
+                                <td><a href="#" class="btn btn-sm btn-outline-primary">Monitor</a></td>
+                            </tr>
+                            <tr>
+                                <td><i class="fas fa-shield-alt me-2"></i>Security System</td>
+                                <td><span class="badge bg-success">Active</span></td>
+                                <td>5 minutes ago</td>
+                                <td><a href="#" class="btn btn-sm btn-outline-primary">Configure</a></td>
+                            </tr>
+                            <tr>
+                                <td><i class="fas fa-backup me-2"></i>Backup System</td>
+                                <td><span class="badge bg-warning">Pending</span></td>
+                                <td>1 hour ago</td>
+                                <td><a href="#" class="btn btn-sm btn-outline-primary">Run Backup</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-tasks me-2"></i>Quick Actions
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('department') }}" class="btn btn-primary">
+                        <i class="fas fa-building me-2"></i>Manage Departments
+                    </a>
+                    <a href="{{ url_for('it_team_details') }}" class="btn btn-success">
+                        <i class="fas fa-user-tie me-2"></i>Admin Team Management
+                    </a>
+                    <a href="{{ url_for('user_change_password') }}" class="btn btn-info">
+                        <i class="fas fa-key me-2"></i>Change Passwords
+                    </a>
+                    <a href="#" class="btn btn-warning">
+                        <i class="fas fa-cogs me-2"></i>System Settings
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- System Status -->
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-server me-2"></i>System Status
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <div class="info-box">
+                            <span class="info-box-icon bg-success">
+                                <i class="fas fa-database"></i>
+                            </span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Database</span>
+                                <span class="info-box-number">Online</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="info-box">
+                            <span class="info-box-icon bg-info">
+                                <i class="fas fa-shield-alt"></i>
+                            </span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Security</span>
+                                <span class="info-box-number">Active</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-bell me-2"></i>System Notifications
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">System Update Available</h6>
+                            <small>2 hours ago</small>
+                        </div>
+                        <p class="mb-1">New version 2.1.0 is available for download.</p>
+                    </div>
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Backup Completed</h6>
+                            <small>1 day ago</small>
+                        </div>
+                        <p class="mb-1">Daily backup has been completed successfully.</p>
+                    </div>
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">New User Registration</h6>
+                            <small>2 days ago</small>
+                        </div>
+                        <p class="mb-1">New admin user has been registered in the system.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Messages -->
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-envelope me-2"></i>Recent Messages from Admins
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Case Type</th>
+                                <th>Case Number</th>
+                                <th>Message</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for message in recent_messages %}
+                            <tr>
+                                <td>{{ message.created_at.strftime('%Y-%m-%d %H:%M') if message.created_at else 'N/A' }}</td>
+                                <td><span class="badge bg-info">{{ message.case_type }}</span></td>
+                                <td>{{ message.case_no }}</td>
+                                <td>{{ message.message[:50] }}{% if message.message|length > 50 %}...{% endif %}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'warning' if message.status == 'Pending' else 'success' }}">
+                                        {{ message.status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="#" class="btn btn-sm btn-primary">Reply</a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center">No recent messages</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Auto-refresh stats every 30 seconds
+    setInterval(function() {
+        // In a real application, you would make an AJAX call to refresh the stats
+        console.log('Refreshing super admin dashboard stats...');
+    }, 30000);
+    
+    // Initialize tooltips
+    $('[data-bs-toggle="tooltip"]').tooltip();
+});
+</script>
+{% endblock %}

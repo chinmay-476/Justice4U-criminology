@@ -1,0 +1,120 @@
+{% extends 'super_admin_base.html' %}
+
+{% block title %}Department Management - Super Admin Panel{% endblock %}
+
+{% block page_title %}Department Management{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">Department Management</li>
+{% endblock %}
+
+{% block content %}
+            <div class="row">
+                <div class="col-md-12">
+                    <!-- Filter Department Form (by Case Type from Accused) -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Filter Department</h3>
+                        </div>
+
+                        <form action="/department" method="post">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <div class="card-body">
+                                <div>
+                                    <label for="case-type-select">Select Case Type:</label>
+                                    <select name="case_type" id="case-type-select" required>
+                                        <option value="">-- Select Case Type --</option>
+                                        {% for ct in case_types %}
+                                        <option value="{{ ct }}" {% if ct == selected_case_type %}selected{% endif %}>{{ ct }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="card-footer">
+                                <button type="submit" class="btn btn-primary">Submit</button>
+                                <button type="reset" class="btn btn-warning">Reset</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Accused by Case Type Table -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Accused by Case Type</h3>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Sl No.</th>
+                                        <th>Name</th>
+                                        <th>Case Type</th>
+                                        <th>Case No</th>
+                                        <th>Sections</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for a in filtered_accused %}
+                                    <tr>
+                                        <td>{{ loop.index }}</td>
+                                        <td>{{ a.username }}</td>
+                                        <td>{{ a.case_type or '-' }}</td>
+                                        <td>{{ a.case_no or '-' }}</td>
+                                        <td>{{ a.sections or '-' }}</td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="5" class="text-center">No records found.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+
+<script>
+  $(document).ready(function(){
+    $('#submit').click(function(){
+      if($('#name').val().trim() === ""){
+        alert("Please Enter Department Name");
+      }
+    });
+
+    $('.delete-btn').click(function(){
+      var deptId = $(this).data('id');
+      var row = $(this).closest('tr');
+
+      Swal.fire({
+        title: 'Are you sure?',
+        text: "You won't be able to revert this!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, delete it!'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          $.ajax({
+            url: '/delete_dept/' + deptId,
+            type: 'POST',
+            success: function(response) {
+              if (response.status === 'success') {
+                Swal.fire('Deleted!', response.message, 'success');
+                row.remove();
+              } else {
+                Swal.fire('Error!', response.message, 'error');
+              }
+            },
+            error: function() {
+              Swal.fire('Error!', 'Something went wrong. Please try again.', 'error');
+            }
+          });
+        }
+      });
+    });
+  });
+</script>
+{% endblock %}

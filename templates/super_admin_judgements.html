@@ -1,0 +1,52 @@
+{% extends "super_admin_base.html" %}
+{% block title %}Judge Decisions - Justice4U{% endblock %}
+{% block page_title %}Judge Decisions{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Judge Decisions</li>{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h5 class="card-title mb-0">Final Judgements from Judge</h5>
+  </div>
+  <div class="card-body">
+    {% if decisions and decisions|length > 0 %}
+      <div class="table-responsive">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Case No</th>
+              <th>Accused</th>
+              <th>Sections</th>
+              <th>Status</th>
+              <th>Decided At</th>
+              <th>Total Fine</th>
+              <th>Imprisonment</th>
+              
+            </tr>
+          </thead>
+          <tbody>
+            {% for dec, acc in decisions %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ dec.case_no }}</td>
+              <td>{{ acc.username }}</td>
+              <td>{{ acc.sections }}</td>
+              <td>
+                <span class="badge {{ 'bg-success' if dec.status == 'Solved' else 'bg-warning text-dark' }}">{{ dec.status }}</span>
+              </td>
+              <td>{{ dec.decided_at.strftime('%Y-%m-%d %H:%M') if dec.decided_at }}</td>
+              <td>{{ dec.total_fine or '-' }}</td>
+              <td>{{ dec.imprisonment or '-' }}</td>
+              
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-info">No judge decisions submitted yet.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+{# VC link actions removed as requested #}

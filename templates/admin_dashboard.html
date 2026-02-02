@@ -1,0 +1,211 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Admin Dashboard - Justice4U{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">Dashboard</li>
+{% endblock %}
+
+{% block content %}
+<!-- Dashboard Stats -->
+<div class="row">
+    <div class="col-lg-3 col-6">
+        <div class="stats-card">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <div class="stats-number">{{ total_accused }}</div>
+                    <div class="stats-label">Total Accused</div>
+                </div>
+                <div class="stats-icon">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="stats-card">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <div class="stats-number">{{ total_complaints }}</div>
+                    <div class="stats-label">Active Complaints</div>
+                </div>
+                <div class="stats-icon">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="stats-card">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <div class="stats-number">{{ total_sections }}</div>
+                    <div class="stats-label">Legal Sections</div>
+                </div>
+                <div class="stats-icon">
+                    <i class="fas fa-gavel"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="stats-card">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <div class="stats-number">{{ total_admins }}</div>
+                    <div class="stats-label">Admin Users</div>
+                </div>
+                <div class="stats-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-chart-line me-2"></i>Recent Activity
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Activity</th>
+                                <th>User</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for activity in recent_activities %}
+                            <tr>
+                                <td>{{ activity.date }}</td>
+                                <td>{{ activity.description }}</td>
+                                <td>{{ activity.user }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if activity.status == 'Completed' else 'warning' }}">
+                                        {{ activity.status }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-tasks me-2"></i>Quick Actions
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('admin_accused_details') }}" class="btn btn-primary">
+                        <i class="fas fa-user-shield me-2"></i>Accused Details
+                    </a>
+                    <a href="{{ url_for('admin_complaint_description') }}" class="btn btn-success">
+                        <i class="fas fa-file-alt me-2"></i>Complaint Description
+                    </a>
+                    <a href="{{ url_for('admin_section_management') }}" class="btn btn-info">
+                        <i class="fas fa-gavel me-2"></i>Section Management
+                    </a>
+                    <a href="{{ url_for('admin_criminal_records') }}" class="btn btn-warning">
+                        <i class="fas fa-folder-open me-2"></i>Criminal Records
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- System Status -->
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-server me-2"></i>System Status
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <div class="info-box">
+                            <span class="info-box-icon bg-success">
+                                <i class="fas fa-database"></i>
+                            </span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Database</span>
+                                <span class="info-box-number">Online</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="info-box">
+                            <span class="info-box-icon bg-info">
+                                <i class="fas fa-shield-alt"></i>
+                            </span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">Security</span>
+                                <span class="info-box-number">Active</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-bell me-2"></i>Notifications
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    {% for notification in notifications %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ notification.title }}</h6>
+                            <small>{{ notification.time }}</small>
+                        </div>
+                        <p class="mb-1">{{ notification.message }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Auto-refresh stats every 30 seconds
+    setInterval(function() {
+        // In a real application, you would make an AJAX call to refresh the stats
+        console.log('Refreshing dashboard stats...');
+    }, 30000);
+    
+    // Initialize tooltips
+    $('[data-bs-toggle="tooltip"]').tooltip();
+});
+</script>
+{% endblock %}

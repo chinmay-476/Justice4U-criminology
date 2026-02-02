@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Admin Panel - Justice4U{% endblock %}</title>
+  
+  <!-- PWA Meta Tags -->
+  <meta name="description" content="Admin panel for criminology and criminal record management system">
+  <meta name="theme-color" content="#2a5298">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="CriminologyMS Admin">
+  <meta name="msapplication-TileColor" content="#1e3c72">
+  <meta name="msapplication-tap-highlight" content="no">
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  
+  <!-- PWA Icons -->
+  <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='images/icon-192x192.png') }}">
+  <link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('static', filename='images/icon-512x512.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/icon-192x192.png') }}">
+  
+  <!-- Additional PWA Meta Tags -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="CriminologyMS Admin">
+
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap/dist/css/bootstrap.min.css">
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <!-- AdminLTE CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+  
+  <!-- Custom Admin CSS -->
+  <style>
+    /* Fixed navbar positioning */
+    .main-header {
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1030;
+        width: 100%;
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    }
+
+    /* Adjust content wrapper to account for fixed navbar */
+    .content-wrapper {
+        margin-top: 56px !important;
+        min-height: calc(100vh - 56px);
+        margin-left: 250px !important; /* align content area with sidebar */
+        padding-left: 0 !important;
+    }
+
+    /* Collapsed sidebar layout - apply at the body level for reliability */
+    body.sidebar-collapsed .content-wrapper {
+        margin-left: 0 !important;
+    }
+    body.sidebar-collapsed .main-footer {
+        margin-left: 0 !important;
+    }
+
+    /* Footer positioning (non-fixed for admin) */
+    .main-footer {
+        position: relative;
+        margin-top: auto;
+        margin-left: 250px !important;
+        transition: all 0.3s ease;
+    }
+
+    /* Footer when sidebar is collapsed */
+    .sidebar-collapse + .content-wrapper .main-footer {
+        margin-left: 0 !important;
+    }
+
+    /* Ensure proper spacing for the page content */
+    .wrapper {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+    }
+
+    /* Adjust sidebar positioning */
+    .main-sidebar {
+        position: fixed !important;
+        top: 56px;
+        height: calc(100vh - 56px);
+        left: 0;
+        z-index: 1020;
+        width: 250px;
+        transition: all 0.3s ease;
+        background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+    }
+
+    /* Sidebar collapsed state */
+    .main-sidebar.sidebar-collapse {
+        margin-left: -250px;
+    }
+
+    /* Content area adjustments - responsive to sidebar state */
+    .content {
+        padding-left: 15px !important;
+        padding-right: 15px !important;
+        padding-top: 0;
+        transition: all 0.3s ease;
+    }
+
+    /* Content wrapper when sidebar is collapsed (sibling fallback) */
+    .sidebar-collapse + .content-wrapper {
+        margin-left: 0 !important;
+    }
+
+    /* Content header adjustments */
+    .content-header {
+        padding-left: 15px !important;
+        padding-right: 15px !important;
+        transition: all 0.3s ease;
+    }
+
+    /* Content header when sidebar is collapsed */
+    .sidebar-collapse + .content-wrapper .content-header,
+    body.sidebar-collapsed .content-header {
+        margin-left: 0 !important;
+    }
+
+    /* Container fluid adjustments */
+    .container-fluid {
+        padding-left: 15px !important;
+        padding-right: 15px !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    /* Card adjustments */
+    .card {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    /* Sidebar styling */
+    .sidebar .nav-link {
+        color: #ecf0f1 !important;
+        transition: all 0.3s ease;
+    }
+
+    .sidebar .nav-link:hover {
+        background-color: rgba(255, 215, 0, 0.1) !important;
+        color: #ffd700 !important;
+    }
+
+    .sidebar .nav-link.active {
+        background-color: #ffd700 !important;
+        color: #1e3c72 !important;
+    }
+
+    .sidebar .nav-link i {
+        margin-right: 10px;
+        width: 20px;
+        text-align: center;
+    }
+
+    /* User panel styling */
+    .user-panel {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding-bottom: 15px;
+        margin-bottom: 15px;
+    }
+
+    .user-panel .info a {
+        color: #ecf0f1 !important;
+        font-weight: bold;
+    }
+
+    /* Navbar styling */
+    .navbar-nav .nav-link {
+        color: white !important;
+    }
+
+    .navbar-nav .nav-link:hover {
+        color: #ffd700 !important;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .content {
+            margin-left: 0 !important;
+            width: 100% !important;
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+        }
+        
+        .content-header {
+            margin-left: 0 !important;
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+        }
+        
+        .container-fluid {
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+        }
+        
+        .main-sidebar {
+            top: 56px;
+            margin-left: -250px; /* Hide sidebar by default on mobile */
+        }
+        
+        .main-sidebar.show {
+            margin-left: 0; /* Show sidebar when toggled on mobile */
+        }
+        
+        .content-wrapper {
+            margin-left: 0 !important;
+        }
+        
+        .main-footer {
+            margin-left: 0 !important;
+        }
+    }
+
+    /* Additional fixes for better alignment */
+    .row {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    .col-md-12, .col-sm-6, .col-sm-12 {
+        padding-left: 15px !important;
+        padding-right: 15px !important;
+    }
+
+    /* Remove any unwanted margins from body */
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background-color: #f4f4f4;
+    }
+
+    /* Additional layout fixes */
+    .main-header .navbar-nav {
+        margin-left: 0 !important;
+    }
+
+    /* Ensure proper content alignment */
+    .content-wrapper > .content {
+        padding: 15px !important;
+    }
+
+    /* Fix any Bootstrap container issues */
+    .container-fluid {
+        max-width: 100% !important;
+    }
+
+    /* Ensure cards take full width of their container */
+    .card {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* Fix table responsiveness */
+    .table-responsive {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Ensure proper spacing for pagination */
+    .pagination {
+        margin: 0 !important;
+    }
+
+    /* Fix any AdminLTE specific issues */
+    .content-wrapper {
+        background-color: #f4f4f4;
+    }
+
+    /* Ensure sidebar doesn't interfere with content */
+    .main-sidebar {
+        box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    }
+
+    /* Page header styling */
+    .content-header h1 {
+        color: #1e3c72;
+        font-weight: bold;
+        margin-bottom: 0;
+    }
+
+    .breadcrumb {
+        background: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .breadcrumb-item a {
+        color: #1e3c72;
+        text-decoration: none;
+    }
+
+    .breadcrumb-item.active {
+        color: #6c757d;
+    }
+
+    /* Stats cards */
+    .stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .stats-card .stats-icon {
+        font-size: 2.5rem;
+        opacity: 0.8;
+    }
+
+    .stats-card .stats-number {
+        font-size: 2rem;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+
+    .stats-card .stats-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <!-- Navbar -->
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link" data-widget="pushmenu" href="#" role="button" title="Toggle Sidebar">
+            <i class="fas fa-bars" id="sidebar-toggle-icon"></i>
+          </a>
+        </li>
+        <li class="nav-item">
+          <span class="navbar-text">
+            <i class="fas fa-shield-alt me-2"></i>
+            <strong>Admin Panel</strong>
+          </span>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('admin_dashboard') }}" title="Dashboard">
+            <i class="fas fa-home me-1"></i>
+            Dashboard
+          </a>
+        </li>
+      </ul>
+      <ul class="navbar-nav ml-auto">
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+            <i class="fas fa-user-circle me-2"></i>
+            {% if session.admin_username %}{{ session.admin_username }}{% else %}Admin{% endif %}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="{{ url_for('admin_logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+          </ul>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Sidebar -->
+    <aside class="main-sidebar sidebar-dark-primary elevation-4">
+      <div class="sidebar">
+        <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+          <div class="info">
+            <a href="#" class="d-block">
+              <i class="fas fa-user-shield me-2"></i>
+              {% if session.admin_username %}{{ session.admin_username }}{% else %}Admin User{% endif %}
+            </a>
+          </div>
+        </div>
+
+        <nav class="mt-2">
+          <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview">
+            
+            <!-- Accused Details -->
+            <li class="nav-item">
+              <a href="{{ url_for('admin_accused_details') }}" class="nav-link {% if request.endpoint == 'admin_accused_details' %}active{% endif %}">
+                <i class="fas fa-user-shield"></i>
+                <p>Accused Details</p>
+              </a>
+            </li>
+
+            <!-- Complaint Description -->
+            <li class="nav-item">
+              <a href="{{ url_for('admin_complaint_description') }}" class="nav-link {% if request.endpoint == 'admin_complaint_description' %}active{% endif %}">
+                <i class="fas fa-file-alt"></i>
+                <p>Contact super admin</p>
+              </a>
+            </li>
+
+            <!-- Section Management -->
+            <li class="nav-item">
+              <a href="{{ url_for('admin_section_management') }}" class="nav-link {% if request.endpoint == 'admin_section_management' %}active{% endif %}">
+                <i class="fas fa-gavel"></i>
+                <p>Section Management</p>
+              </a>
+            </li>
+
+            <!-- Criminal Records -->
+            <li class="nav-item">
+              <a href="{{ url_for('admin_criminal_records') }}" class="nav-link {% if request.endpoint == 'admin_criminal_records' %}active{% endif %}">
+                <i class="fas fa-folder-open"></i>
+                <p>Criminal Records</p>
+              </a>
+            </li>
+
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+    <!-- Page Content -->
+    <div class="content-wrapper flex-grow-1">
+      <!-- Content Header -->
+      <div class="content-header">
+        <div class="container-fluid">
+          <div class="row mb-2">
+            <div class="col-sm-6">
+              <h1>{% block page_title %}Admin Panel{% endblock %}</h1>
+            </div>
+            <div class="col-sm-6">
+              <ol class="breadcrumb float-sm-right">
+                <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Home</a></li>
+                {% block breadcrumb %}{% endblock %}
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main content -->
+      <div class="content">
+        <div class="container-fluid">
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                  <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else 'check-circle' }} me-2"></i>
+                  {{ message }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+
+          {% block content %}{% endblock %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="main-footer">
+      <strong>Copyright &copy; 2024 <a href="{{ url_for('home') }}">Justice4U</a>.</strong>
+      All rights reserved.
+      <div class="float-right d-none d-sm-inline-block">
+        <b>Version</b> 2.0.0
+      </div>
+    </footer>
+  </div>
+  
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <!-- Bootstrap Bundle (JS + Popper) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- AdminLTE JS -->
+  <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+  
+  <!-- Sidebar Toggle Script -->
+  <script>
+    $(document).ready(function () {
+      // Sidebar toggle functionality
+      $('[data-widget="pushmenu"]').on('click', function (e) {
+        e.preventDefault();
+        $('.main-sidebar').toggleClass('sidebar-collapse');
+        $('body').toggleClass('sidebar-collapsed');
+        // Clear any inline styles to avoid compounding margins
+        $('.content, .content-header, .main-footer').attr('style', '');
+      });
+
+      // Mobile sidebar toggle
+      $(window).resize(function() {
+        // Do not set inline styles; CSS media queries handle layout
+        $('.content, .content-header, .main-footer').attr('style', '');
+      });
+
+      // Close sidebar when clicking outside on mobile
+      $(document).on('click', function(e) {
+        if ($(window).width() <= 768) {
+          if (!$(e.target).closest('.main-sidebar, [data-widget="pushmenu"]').length) {
+            $('.main-sidebar').removeClass('show');
+          }
+        }
+      });
+
+      // Auto-hide alerts after 5 seconds
+      setTimeout(function() {
+        $('.alert').fadeOut('slow');
+      }, 5000);
+    });
+  </script>
+
+  {% block scripts %}{% endblock %}
+
+  <!-- PWA Service Worker Registration -->
+  <script>
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('{{ url_for("static", filename="service-worker.js") }}')
+          .then(function(registration) {
+            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            
+            // Check for updates
+            registration.addEventListener('updatefound', function() {
+              const newWorker = registration.installing;
+              newWorker.addEventListener('statechange', function() {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // New content is available, show update notification
+                  if (confirm('New version available! Click OK to update.')) {
+                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                    window.location.reload();
+                  }
+                }
+              });
+            });
+          })
+          .catch(function(err) {
+            console.log('ServiceWorker registration failed: ', err);
+          });
+      });
+    }
+
+    // Handle PWA install prompt
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Prevent Chrome 67 and earlier from automatically showing the prompt
+      e.preventDefault();
+      // Stash the event so it can be triggered later
+      deferredPrompt = e;
+      
+      // Show install button or notification
+      showInstallButton();
+    });
+
+    function showInstallButton() {
+      // Create install button
+      const installButton = document.createElement('button');
+      installButton.innerHTML = '📱 Install App';
+      installButton.className = 'btn btn-primary position-fixed';
+      installButton.style.cssText = 'bottom: 20px; right: 20px; z-index: 9999; box-shadow: 0 4px 8px rgba(0,0,0,0.3);';
+      installButton.onclick = installApp;
+      
+      document.body.appendChild(installButton);
+      
+      // Auto-hide after 10 seconds
+      setTimeout(() => {
+        if (installButton.parentNode) {
+          installButton.parentNode.removeChild(installButton);
+        }
+      }, 10000);
+    }
+
+    function installApp() {
+      if (deferredPrompt) {
+        // Show the install prompt
+        deferredPrompt.prompt();
+        
+        // Wait for the user to respond to the prompt
+        deferredPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            console.log('User accepted the install prompt');
+          } else {
+            console.log('User dismissed the install prompt');
+          }
+          deferredPrompt = null;
+        });
+      }
+    }
+
+    // Handle app installed event
+    window.addEventListener('appinstalled', (evt) => {
+      console.log('App was installed');
+      // Hide install button if it exists
+      const installButton = document.querySelector('button[onclick="installApp()"]');
+      if (installButton) {
+        installButton.parentNode.removeChild(installButton);
+      }
+    });
+  </script>
+</body>
+</html>

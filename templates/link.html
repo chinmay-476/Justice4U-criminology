@@ -1,0 +1,64 @@
+<!-- Google Font: Source Sans Pro -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='plugins/fontawesome-free/css/all.min.css') }}">
+
+  <!-- Ionicons -->
+  <link rel="stylesheet" href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
+
+  <!-- Tempusdominus Bootstrap 4 -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='plugins/tempusdominus-bootstrap-4/css/tempusdominus-bootstrap-4.min.css') }}">
+
+  <!-- iCheck -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='plugins/icheck-bootstrap/icheck-bootstrap.min.css') }}">
+
+  <!-- JQVMap -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='plugins/jqvmap/jqvmap.min.css') }}">
+
+  <!-- Theme style -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='dist/css/adminlte.min.css') }}">
+
+  <!-- overlayScrollbars -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='plugins/overlayScrollbars/css/OverlayScrollbars.min.css') }}">
+
+  <!-- Daterange picker -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='plugins/daterangepicker/daterangepicker.css') }}">
+
+  <!-- Summernote -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='plugins/summernote/summernote-bs4.min.css') }}">
+
+  <!-- Favicon -->
+  <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
+
+  <style>
+    /* Ensure select text is readable across themes */
+    select,
+    .form-select,
+    .custom-select,
+    select.form-control {
+      color: #212529 !important; /* Bootstrap body color */
+      background-color: #ffffff !important;
+    }
+
+    /* Options text color */
+    select option {
+      color: #212529;
+      background-color: #ffffff;
+    }
+
+    /* Placeholder color for selects rendered as custom controls */
+    .form-control::placeholder,
+    .form-select:invalid,
+    select.form-control:invalid {
+      color: #6c757d;
+    }
+
+    /* High contrast when disabled */
+    select:disabled,
+    .form-select:disabled,
+    .custom-select:disabled {
+      color: #6c757d !important;
+      background-color: #e9ecef !important;
+    }
+  </style>

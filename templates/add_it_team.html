@@ -1,0 +1,68 @@
+{% extends 'super_admin_base.html' %}
+
+{% block title %}Add Admin Team Member - Super Admin Panel{% endblock %}
+
+{% block page_title %}Add Admin Team Member{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('it_team_details') }}">Admin Team</a></li>
+<li class="breadcrumb-item active">Add Member</li>
+{% endblock %}
+
+{% block content %}
+            {% if success %}
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                Admin Team member added successfully!
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endif %}
+
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card card-primary">
+                        <div class="card-header">
+                            <h3 class="card-title">New Admin Team Member</h3>
+                        </div>
+                        <!-- form start -->
+                        <form method="POST" action="/add_admin">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="username">Username</label>
+                                            <input type="text" name="username" class="form-control" placeholder="Enter username" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="password">Password</label>
+                                            <input type="password" name="password" class="form-control" placeholder="Enter password" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="mobile">Mobile</label>
+                                            <input type="text" name="mobile" class="form-control" placeholder="Enter mobile number" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="email_id">Email ID</label>
+                                            <input type="email" name="email_id" class="form-control" placeholder="Enter email" required>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card-footer">
+                                <button type="submit" class="btn btn-primary">Submit</button>
+                                <a href="{{ url_for('it_team_details') }}" class="btn btn-secondary">Back to List</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+{% endblock %}

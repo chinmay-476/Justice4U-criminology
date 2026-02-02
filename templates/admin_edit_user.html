@@ -1,0 +1,253 @@
+{% extends 'admin_base.html' %}
+
+{% block page_title %}Edit Accused{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin_accused_details') }}">Accused Details</a></li>
+<li class="breadcrumb-item active">Edit</li>
+{% endblock %}
+
+{% block content %}
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-md-12">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Edit Accused</h3>
+              </div>
+              <div class="card-body">
+                <form method="post" action="{{ url_for('admin_accused_edit', accused_id=accused.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <div class="row">
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" name="username" class="form-control" value="{{ accused.username }}">
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Relative Name</label>
+                        <input type="text" name="relative_name" class="form-control" value="{{ accused.relative_name }}">
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-group">
+                        <label>Mobile</label>
+                        <input type="text" name="mobile" class="form-control" value="{{ accused.mobile }}">
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-group">
+                        <label>Relation</label>
+                        <input type="text" name="relation" class="form-control" value="{{ accused.relation }}">
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-group">
+                        <label>Date of Birth</label>
+                        <input type="date" name="dob" class="form-control" value="{{ accused.dob }}">
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-group">
+                        <label>Gender</label>
+                        <select name="gender" class="form-control">
+                          <option value="Male" {% if accused.gender=='Male' %}selected{% endif %}>Male</option>
+                          <option value="Female" {% if accused.gender=='Female' %}selected{% endif %}>Female</option>
+                          <option value="Other" {% if accused.gender=='Other' %}selected{% endif %}>Other</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" name="email_id" class="form-control" value="{{ accused.email_id }}">
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-group">
+                        <label>Occupation</label>
+                        <input type="text" name="occupation" class="form-control" value="{{ accused.occupation }}">
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Nationality</label>
+                        <select name="nationality" class="form-control">
+                          <option value="Indian" {% if accused.nationality == 'Indian' %}selected{% endif %}>Indian</option>
+                          <option value="Non-Indian" {% if accused.nationality == 'Non-Indian' %}selected{% endif %}>Non-Indian</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Education</label>
+                        <input type="text" name="education" class="form-control" value="{{ accused.education }}">
+                      </div>
+                    </div>
+                    <div class="col-md-3">
+                      <div class="form-group">
+                        <label>Height</label>
+                        <input type="text" name="height" class="form-control" value="{{ accused.height }}">
+                      </div>
+                    </div>
+                    <div class="col-md-3">
+                      <div class="form-group">
+                        <label>Weight</label>
+                        <input type="text" name="weight" class="form-control" value="{{ accused.weight }}">
+                      </div>
+                    </div>
+                    <div class="col-md-3">
+                      <div class="form-group">
+                        <label>Waist Size</label>
+                        <input type="text" name="waist_size" class="form-control" value="{{ accused.waist_size }}">
+                      </div>
+                    </div>
+                    <div class="col-md-3">
+                      <div class="form-group">
+                        <label>Foot Size</label>
+                        <input type="text" name="foot_size" class="form-control" value="{{ accused.foot_size }}">
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Special Mark/Cut</label>
+                        <input type="text" name="special_mark_cut" class="form-control" value="{{ accused.special_mark_cut }}">
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Skin Color</label>
+                        <input type="text" name="skin_color" class="form-control" value="{{ accused.skin_color }}">
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Tattoo</label>
+                        <input type="text" name="tattoo" class="form-control" value="{{ accused.tattoo }}">
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Accessories Wearing</label>
+                        <input type="text" name="accessories_wearing" class="form-control" value="{{ accused.accessories_wearing }}">
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Blood Group</label>
+                        <input type="text" name="blood_group" class="form-control" value="{{ accused.blood_group }}">
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Special Key Point</label>
+                        <input type="text" name="special_key_point" class="form-control" value="{{ accused.special_key_point }}">
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Pincode</label>
+                        <input type="text" name="pincode" class="form-control" value="{{ accused.pincode }}">
+                      </div>
+                    </div>
+                    <div class="col-md-12">
+                      <div class="form-group">
+                        <label>Address</label>
+                        <textarea name="permanent_address" class="form-control" rows="3">{{ accused.permanent_address }}</textarea>
+                      </div>
+                    </div>
+                    <div class="col-md-12">
+                      <div class="form-group">
+                        <label>Temporary Address</label>
+                        <textarea name="temporary_address" class="form-control" rows="2">{{ accused.temporary_address }}</textarea>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Aadhaar Number</label>
+                        <input type="text" name="aadhaar_no" class="form-control" value="{{ accused.aadhaar_no }}">
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Case No</label>
+                        <input type="text" name="case_no" class="form-control" value="{{ accused.case_no }}">
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>FIR No</label>
+                        <input type="text" name="fir_no" class="form-control" value="{{ accused.fir_no }}">
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Police Station</label>
+                        <input type="text" name="ps" class="form-control" value="{{ accused.ps }}">
+                      </div>
+                    </div>
+                    <div class="col-md-12">
+                      <div class="form-group">
+                        <label>Sections</label>
+                        <input type="text" name="sections" class="form-control" value="{{ accused.sections }}">
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Date of Arrest</label>
+                        <input type="date" name="date_of_arrest" class="form-control" value="{{ accused.date_of_arrest }}">
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Place of Arrest</label>
+                        <input type="text" name="place_of_arrest" class="form-control" value="{{ accused.place_of_arrest }}">
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Warrant Arrest</label>
+                        <select name="warrant_arrest" class="form-control">
+                          <option value="Yes" {% if accused.warrant_arrest=='Yes' %}selected{% endif %}>Yes</option>
+                          <option value="No" {% if accused.warrant_arrest=='No' %}selected{% endif %}>No</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="col-md-12">
+                      <div class="form-group">
+                        <label>Confession Statement</label>
+                        <textarea name="confession_statement" class="form-control" rows="3">{{ accused.confession_statement }}</textarea>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Court Forward Date/Time</label>
+                        <input type="datetime-local" name="court_forward_date_time" class="form-control" value="{{ accused.court_forward_date_time|default('', true) }}">
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Remand Custody</label>
+                        <input type="text" name="remand_custody" class="form-control" value="{{ accused.remand_custody }}">
+                      </div>
+                    </div>
+                    <div class="col-md-12">
+                      <div class="form-group">
+                        <label>Previous Criminal Record</label>
+                        <input type="text" name="previous_criminal_record" class="form-control" value="{{ accused.previous_criminal_record }}">
+                      </div>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <button type="submit" class="btn btn-primary">Update</button>
+                    <a href="{{ url_for('admin_accused_details') }}" class="btn btn-secondary">Cancel</a>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+{% endblock %}

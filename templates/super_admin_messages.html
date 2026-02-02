@@ -1,0 +1,74 @@
+{% extends "super_admin_base.html" %}
+
+{% block title %}Super Admin Messages - Justice4U{% endblock %}
+{% block page_title %}Super Admin Messages{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Messages</li>{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h5 class="card-title mb-0">Messages from Admin/Users</h5>
+  </div>
+  <div class="card-body">
+    {% if messages and messages|length > 0 %}
+      <div class="table-responsive">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Case Type</th>
+              <th>Case No</th>
+              <th>Message</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th>Reply</th>
+              <th>Final Judgement</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in messages %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ m.case_type }}</td>
+              <td>{{ m.case_no }}</td>
+              <td style="max-width: 320px; white-space: pre-wrap;">{{ m.message }}</td>
+              <td>
+                {% if m.status == 'Replied' %}
+                  <span class="badge bg-success">Replied</span>
+                {% else %}
+                  <span class="badge bg-warning text-dark">Pending</span>
+                {% endif %}
+              </td>
+              <td>{{ m.created_at.strftime('%Y-%m-%d %H:%M') if m.created_at }}</td>
+              <td style="min-width: 280px;">
+                {% if m.reply %}
+                  <div class="mb-2"><strong>Reply:</strong> <span style="white-space: pre-wrap;">{{ m.reply }}</span></div>
+                  <div class="text-muted" style="font-size: 0.9rem;">{{ m.replied_at.strftime('%Y-%m-%d %H:%M') if m.replied_at }}</div>
+                {% else %}
+                  <form method="POST" action="{{ url_for('super_admin_reply', message_id=m.id) }}" class="d-flex">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="text" name="reply" class="form-control me-2" placeholder="Type reply..." required>
+                    <button type="submit" class="btn btn-primary">Send</button>
+                  </form>
+                {% endif %}
+              </td>
+              <td>
+                {% set decision = decisions_by_case.get(m.case_no) %}
+                {% if decision %}
+                  <span class="badge {{ 'bg-success' if decision.status == 'Solved' else 'bg-warning text-dark' }}">{{ decision.status }}</span>
+                  <div class="text-muted" style="font-size: 0.85rem;">{{ decision.decided_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                {% else %}
+                  <span class="text-muted">No decision</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-info">No messages found.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

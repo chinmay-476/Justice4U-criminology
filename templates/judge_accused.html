@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Judge - Accused Details</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-light">
+  <nav class="navbar navbar-expand-lg navbar-dark" style="background:#1e3c72;">
+    <div class="container">
+      <a class="navbar-brand" href="{{ url_for('judge_dashboard') }}"><i class="fas fa-gavel me-2"></i>Judge Panel</a>
+      <div class="ms-auto">
+        <a class="btn btn-outline-light btn-sm" href="{{ url_for('judge_pending') }}">Pending Cases</a>
+        <a class="btn btn-outline-light btn-sm ms-2" href="{{ url_for('judge_solved') }}">Solved Cases</a>
+        <a class="btn btn-warning btn-sm ms-2" href="{{ url_for('judge_logout') }}">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container py-4">
+    <h3 class="mb-3">Accused Details</h3>
+
+    {% if ongoing_meetings and ongoing_meetings|length > 0 %}
+    <div class="card mb-3">
+      <div class="card-header">
+        <strong>Ongoing Meetings</strong>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Case No</th>
+                <th>Link</th>
+                <th>Started</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for m in ongoing_meetings %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ m.case_no }}</td>
+                <td><a href="{{ m.link }}" target="_blank" rel="noopener">{{ m.link }}</a></td>
+                <td>{{ m.created_at.strftime('%Y-%m-%d %H:%M') if m.created_at }}</td>
+                <td>
+                  <form method="POST" action="{{ url_for('judge_end_meeting', meeting_id=m.id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-sm btn-danger">End</button>
+                  </form>
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="5">No ongoing meetings.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+      <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="card">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Gender</th>
+                <th>Permanent Address</th>
+                <th>Mobile</th>
+                <th>Case No</th>
+                <th>Sections</th>
+                <th>Date of Arrest</th>
+                <th>Place of Arrest</th>
+                <th>Video Meet</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if accused %}
+                {% for person in accused %}
+                  <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ person.username }}</td>
+                    <td>{{ person.gender }}</td>
+                    <td>{{ person.permanent_address }}</td>
+                    <td>{{ person.mobile }}</td>
+                    <td>{{ person.case_no }}</td>
+                    <td>{{ person.sections }}</td>
+                    <td>{{ person.date_of_arrest }}</td>
+                    <td>{{ person.place_of_arrest }}</td>
+                    <td>
+                      {% set m = meeting_links_by_case.get(person.case_no) %}
+                      {% if m %}
+                        <a href="{{ m.link }}" target="_blank" rel="noopener" class="btn btn-sm btn-info"><i class="fas fa-video"></i> Join</a>
+                      {% else %}
+                        <span class="text-muted">No link</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if person.sections %}
+                      <button type="button" class="btn btn-sm btn-info"
+                              data-username="{{ person.username }}"
+                              data-relative-name="{{ person.relative_name }}"
+                              data-dob="{{ person.dob }}"
+                              data-gender="{{ person.gender }}"
+                              data-mobile="{{ person.mobile }}"
+                              data-email="{{ person.email_id }}"
+                              data-occupation="{{ person.occupation }}"
+                              data-nationality="{{ person.nationality }}"
+                              data-permanent-address="{{ person.permanent_address }}"
+                              data-pincode="{{ person.pincode }}"
+                              data-aadhaar="{{ person.aadhaar_no }}"
+                              data-case-no="{{ person.case_no }}"
+                              data-fir-no="{{ person.fir_no }}"
+                              data-ps="{{ person.ps }}"
+                              data-remand-custody="{{ person.remand_custody }}"
+                              data-medical-report="{{ person.medical_report }}"
+                              data-sections="{{ person.sections }}"
+                              data-confession-statement="{{ person.confession_statement }}"
+                              data-accused-photo="{{ person.accused_photo }}"
+                              onclick="showPunishmentDetails('{{ person.sections }}', this)">
+                        <i class="fa fa-gavel"></i> Punishment Details
+                      </button>
+                      <button type="button" class="btn btn-sm btn-secondary ms-1" onclick="sendVcLinkForCase('{{ person.case_no }}')">
+                        <i class="fas fa-video"></i> Send VC Link
+                      </button>
+                      {% else %}
+                        <span class="text-muted">N/A</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% else %}
+                  <tr>
+                    <td colspan="10">No accused records found.</td>
+                  </tr>
+                {% endfor %}
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Punishment Details Modal -->
+  <div class="modal fade" id="punishmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Punishment Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="punishmentContent">
+            <div class="text-center">
+              <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+            </div>
+          </div>
+          <hr/>
+          <form id="judgeDecisionForm" method="POST" action="{{ url_for('judge_submit_decision') }}" class="row g-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="case_no" id="judgeDecisionCaseNo" value="">
+            <div class="col-md-4">
+              <label class="form-label">Total Fine</label>
+              <select class="form-select" name="total_fine">
+                <option value="">Select total fine</option>
+                <option value="None">None</option>
+                <option value="1000">Rs. 1,000</option>
+                <option value="5000">Rs. 5,000</option>
+                <option value="10000">Rs. 10,000</option>
+                <option value="25000">Rs. 25,000</option>
+                <option value="50000">Rs. 50,000</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Imprisonment</label>
+              <select class="form-select" name="imprisonment">
+                <option value="">Select imprisonment</option>
+                <option value="None">None</option>
+                <option value="1-3 months">1-3 months</option>
+                <option value="6 months">6 months</option>
+                <option value="1 year">1 year</option>
+                <option value="3 years">3 years</option>
+                <option value="7 years">7 years</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="decision" id="decisionPending" value="Pending" checked>
+                <label class="form-check-label" for="decisionPending">Pending</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="decision" id="decisionSolved" value="Solved">
+                <label class="form-check-label" for="decisionSolved">Solved</label>
+              </div>
+            </div>
+            <div class="col-12 d-flex align-items-center">
+              <button type="submit" class="btn btn-primary">Submit</button>
+            </div>
+          </form>
+          <div id="belowFormSection" class="mt-3"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    function showPunishmentDetails(sectionId, btnEl) {
+      var modal = new bootstrap.Modal(document.getElementById('punishmentModal'));
+      modal.show();
+      $('#punishmentContent').html('<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>');
+
+      const accused = btnEl ? {
+        username: btnEl.getAttribute('data-username') || '',
+        relative_name: btnEl.getAttribute('data-relative-name') || '',
+        dob: btnEl.getAttribute('data-dob') || '',
+        gender: btnEl.getAttribute('data-gender') || '',
+        mobile: btnEl.getAttribute('data-mobile') || '',
+        email: btnEl.getAttribute('data-email') || '',
+        occupation: btnEl.getAttribute('data-occupation') || '',
+        nationality: btnEl.getAttribute('data-nationality') || '',
+        permanent_address: btnEl.getAttribute('data-permanent-address') || '',
+        pincode: btnEl.getAttribute('data-pincode') || '',
+        aadhaar_no: btnEl.getAttribute('data-aadhaar') || '',
+        case_no: btnEl.getAttribute('data-case-no') || '',
+        fir_no: btnEl.getAttribute('data-fir-no') || '',
+        ps: btnEl.getAttribute('data-ps') || '',
+        remand_custody: btnEl.getAttribute('data-remand-custody') || '',
+        medical_report: btnEl.getAttribute('data-medical-report') || '',
+        sections: btnEl.getAttribute('data-sections') || '',
+        confession_statement: btnEl.getAttribute('data-confession-statement') || '',
+        accused_photo: btnEl.getAttribute('data-accused-photo') || ''
+      } : null;
+
+      // set hidden case no for decision submission
+      var hiddenInput = document.getElementById('judgeDecisionCaseNo');
+      if (hiddenInput) { hiddenInput.value = accused ? accused.case_no : ''; }
+
+      $.ajax({
+        url: '/get_punishment_details',
+        method: 'POST',
+        data: { 'section_id': sectionId, 'csrf_token': '{{ csrf_token }}' },
+        success: function(response) {
+          if (response.success && Array.isArray(response.items) && response.items.length) {
+            const valueOrNA = (v) => (v && v !== 'undefined' ? v : 'N/A');
+            const calcAge = (dobStr) => {
+              if (!dobStr || dobStr === 'undefined') return 'N/A';
+              const d = new Date(dobStr);
+              if (isNaN(d.getTime())) return 'N/A';
+              const diff = Date.now() - d.getTime();
+              const ageDt = new Date(diff);
+              return Math.abs(ageDt.getUTCFullYear() - 1970);
+            };
+
+            const accusedBlock = accused ? `
+              <div class="mb-4 p-3 border rounded">
+                <h5 class="mb-3">Accused Details</h5>
+                <div class="row">
+                  <div class="col-md-12">
+                    <div class="row">
+                      <div class="col-md-6"><strong>Full Name:</strong> ${valueOrNA(accused.username)}</div>
+                      <div class="col-md-6"><strong>Relative Name:</strong> ${valueOrNA(accused.relative_name)}</div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-6"><strong>Age:</strong> ${calcAge(accused.dob)}</div>
+                      <div class="col-md-6"><strong>Gender:</strong> ${valueOrNA(accused.gender)}</div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-6"><strong>Nationality:</strong> ${valueOrNA(accused.nationality)}</div>
+                      <div class="col-md-6"><strong>Mobile:</strong> ${valueOrNA(accused.mobile)}</div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-6"><strong>Email:</strong> ${valueOrNA(accused.email)}</div>
+                      <div class="col-md-6"><strong>Address:</strong> ${valueOrNA(accused.permanent_address)}</div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-6"><strong>Pincode:</strong> ${valueOrNA(accused.pincode)}</div>
+                      <div class="col-md-6"><strong>Aadhaar Number:</strong> ${valueOrNA(accused.aadhaar_no)}</div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-6"><strong>Case no:</strong> ${valueOrNA(accused.case_no)}</div>
+                      <div class="col-md-6"><strong>FIR no:</strong> ${valueOrNA(accused.fir_no)}</div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-6"><strong>Police station:</strong> ${valueOrNA(accused.ps)}</div>
+                      <div class="col-md-6"><strong>Sections:</strong> ${valueOrNA(accused.sections)}</div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-12"><strong>Remand Custody:</strong> ${valueOrNA(accused.remand_custody)}</div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-12"><strong>Medical report:</strong> ${valueOrNA(accused.medical_report)}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ` : '';
+
+            const blocks = response.items.map(function(item) {
+              return `
+                <div class="mb-3 p-3 border rounded">
+                  <div class="row">
+                    <div class="col-md-6">
+                      <h6><strong>Category:</strong></h6>
+                      <p>${item.category}</p>
+                    </div>
+                    <div class="col-md-6">
+                      <h6><strong>Sections:</strong></h6>
+                      <p>${item.sections}</p>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-12">
+                      <h6><strong>Offence:</strong></h6>
+                      <p>${item.offence}</p>
+                    </div>
+                  </div>
+                  ${item.possible_punishments ? `
+                  <div class="row">
+                    <div class="col-md-12">
+                      <h6><strong>Possible Punishments:</strong></h6>
+                      <p>${item.possible_punishments}</p>
+                    </div>
+                  </div>` : ''}
+                  <div class="row">
+                    <div class="col-md-12">
+                      <h6><strong>Minimum Fine:</strong></h6>
+                      <p class="text-danger"><strong>${item.minimum_fine}</strong></p>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('');
+
+            const signatureBlock = `
+              <div class=\"mt-4 p-3 border rounded\">
+                <div class=\"row mb-3\">
+                  <div class=\"col-md-12\">
+                    <strong>Statement:</strong>
+                    <p>${valueOrNA(accused.confession_statement)}</p>
+                  </div>
+                </div><br><br>
+                <div class=\"row\">
+                  <div class=\"col-md-4 text-center\">
+                    <div>Accused Signature</div>
+                    <div style=\"font-size: 12px;\">Date: __________</div>
+                  </div>
+                  <div class=\"col-md-4 text-center\">
+                  </div>
+                  <div class=\"col-md-4 text-center\">
+                    <div>Authority Signature</div>
+                    <div style=\"font-size: 12px;\">Date: __________</div>
+                  </div>
+                </div>
+              </div>
+            `;
+
+            // Fetch current meeting link for this case and render below customization options
+            $.ajax({
+              url: '/get_meeting_link',
+              method: 'POST',
+              data: { case_no: accused ? accused.case_no : '' },
+              success: function(rsp) {
+                var vcHtml = '';
+                if (rsp && rsp.success && rsp.link) {
+                  vcHtml = `
+                    <div class="mt-3 p-3 border rounded">
+                      <strong>Video Conference Link:</strong>
+                      <a href="${rsp.link}" target="_blank" rel="noopener">${rsp.link}</a>
+                    </div>`;
+                }
+                // Keep details and punishment blocks above the form
+                $('#punishmentContent').html(`${accusedBlock}${blocks}`);
+                // Inject VC link (if any) + signature block below the customization form
+                var below = document.getElementById('belowFormSection');
+                if (below) { below.innerHTML = `${vcHtml}${signatureBlock}`; }
+              },
+              error: function() {
+                $('#punishmentContent').html(`${accusedBlock}${blocks}`);
+                var below = document.getElementById('belowFormSection');
+                if (below) { below.innerHTML = `${signatureBlock}`; }
+              }
+            });
+          } else {
+            $('#punishmentContent').html('<div class="alert alert-warning">No punishment details found for the provided sections.</div>');
+          }
+        },
+        error: function() {
+          $('#punishmentContent').html('<div class="alert alert-danger">Error loading punishment details. Please try again.</div>');
+        }
+      });
+    }
+
+    function sendVcLinkForCase(caseNo) {
+      if (!caseNo) { alert('Case number not found.'); return; }
+      var randomNumber = Math.floor(100000 + Math.random() * 900000);
+      var meetingLink = 'https://meet.jit.si/room' + randomNumber;
+
+      try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '{{ url_for("judge_save_meeting_link") }}', true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onload = function() {
+          // Update the VC link display under the form
+          var below = document.getElementById('belowFormSection');
+          if (below) {
+            below.innerHTML = '<div class="mt-3 p-3 border rounded"><strong>Video Conference Link:</strong> <a href="' + meetingLink + '" target="_blank" rel="noopener">' + meetingLink + '</a></div>' + below.innerHTML;
+          }
+        };
+        xhr.send('case_no=' + encodeURIComponent(caseNo) + '&link=' + encodeURIComponent(meetingLink) + '&csrf_token={{ csrf_token }}');
+      } catch (e) {}
+
+      if (navigator.share) {
+        navigator.share({ title: 'Jitsi Meeting', text: 'VC Link for case ' + caseNo + ': ' + meetingLink, url: meetingLink }).catch(function(){});
+      } else {
+        window.prompt('Copy this link to share:', meetingLink);
+      }
+    }
+
+    // Submit behavior: only submits the form (no link generation here)
+    (function initJudgeFormSubmit() {
+      var form = document.getElementById('judgeDecisionForm');
+      if (!form) return;
+      form.addEventListener('submit', function(e){
+        return; // default submit
+      });
+    })();
+  </script>
+</body>
+</html>

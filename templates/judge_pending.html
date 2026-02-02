@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Judge - Pending Cases</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-light">
+  <nav class="navbar navbar-expand-lg navbar-dark" style="background:#1e3c72;">
+    <div class="container">
+      <a class="navbar-brand" href="{{ url_for('judge_dashboard') }}"><i class="fas fa-gavel me-2"></i>Judge Panel</a>
+      <div class="ms-auto">
+        <a class="btn btn-outline-light btn-sm" href="{{ url_for('judge_dashboard') }}">Accused Details</a>
+        <a class="btn btn-outline-light btn-sm ms-2" href="{{ url_for('judge_solved') }}">Solved Cases</a>
+        <a class="btn btn-warning btn-sm ms-2" href="{{ url_for('judge_logout') }}">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container py-4">
+    <h3 class="mb-3">Pending Cases</h3>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+      <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="card">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Case No</th>
+                <th>Sections</th>
+                <th>Meeting</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if accused %}
+              {% for person in accused %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ person.username }}</td>
+                <td>{{ person.case_no }}</td>
+                <td>{{ person.sections }}</td>
+                <td>
+                  {% set meeting = meeting_links_by_case.get(person.case_no) %}
+                  {% if meeting %}
+                    <a href="{{ meeting.link }}" target="_blank" rel="noopener" class="btn btn-sm btn-info"><i class="fas fa-video"></i> Join</a>
+                  {% else %}
+                    <span class="text-muted">No link</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <button type="button" class="btn btn-sm btn-info"
+                          onclick="showPunishmentFromList('{{ person.sections }}', '{{ person.username }}', '{{ person.relative_name }}', '{{ person.dob }}', '{{ person.gender }}', '{{ person.mobile }}', '{{ person.email_id }}', '{{ person.occupation }}', '{{ person.nationality }}', '{{ person.permanent_address }}', '{{ person.pincode }}', '{{ person.aadhaar_no }}', '{{ person.case_no }}', '{{ person.fir_no }}', '{{ person.ps }}', '{{ person.remand_custody }}', '{{ person.medical_report }}', '{{ person.confession_statement }}', '{{ person.accused_photo }}')">
+                    <i class="fa fa-gavel"></i> Punishment Details
+                  </button>
+                  <form method="POST" action="{{ url_for('judge_mark_solved') }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="case_no" value="{{ person.case_no }}">
+                    <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-check"></i> Mark Solved</button>
+                  </form>
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="5">No pending cases.</td></tr>
+              {% endfor %}
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Punishment Details Modal (Pending Page) -->
+  <div class="modal fade" id="punishmentModalPending" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Punishment Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="punishmentContentPending">
+            <div class="text-center">
+              <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showPunishmentFromList(sections, username, relative_name, dob, gender, mobile, email, occupation, nationality, permanent_address, pincode, aadhaar_no, case_no, fir_no, ps, remand_custody, medical_report, confession_statement, accused_photo) {
+      var modalEl = document.getElementById('punishmentModalPending');
+      var modal = new bootstrap.Modal(modalEl);
+      modal.show();
+      var content = document.getElementById('punishmentContentPending');
+      content.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+      function valueOrNA(v) { return (v && v !== 'undefined') ? v : 'N/A'; }
+      function calcAge(dobStr) {
+        if (!dobStr || dobStr === 'undefined') return 'N/A';
+        var d = new Date(dobStr);
+        if (isNaN(d.getTime())) return 'N/A';
+        var diff = Date.now() - d.getTime();
+        var ageDt = new Date(diff);
+        return Math.abs(ageDt.getUTCFullYear() - 1970);
+      }
+
+      var accusedBlock = `
+        <div class="mb-4 p-3 border rounded">
+          <h5 class="mb-3">Accused Details</h5>
+          <div class="row">
+            <div class="col-md-12">
+              <div class="row">
+                <div class="col-md-6"><strong>Full Name:</strong> ${valueOrNA(username)}</div>
+                <div class="col-md-6"><strong>Relative Name:</strong> ${valueOrNA(relative_name)}</div>
+              </div>
+              <div class="row">
+                <div class="col-md-6"><strong>Age:</strong> ${calcAge(dob)}</div>
+                <div class="col-md-6"><strong>Gender:</strong> ${valueOrNA(gender)}</div>
+              </div>
+              <div class="row">
+                <div class="col-md-6"><strong>Nationality:</strong> ${valueOrNA(nationality)}</div>
+                <div class="col-md-6"><strong>Mobile:</strong> ${valueOrNA(mobile)}</div>
+              </div>
+              <div class="row">
+                <div class="col-md-6"><strong>Email:</strong> ${valueOrNA(email)}</div>
+                <div class="col-md-6"><strong>Address:</strong> ${valueOrNA(permanent_address)}</div>
+              </div>
+              <div class="row">
+                <div class="col-md-6"><strong>Pincode:</strong> ${valueOrNA(pincode)}</div>
+                <div class="col-md-6"><strong>Aadhaar Number:</strong> ${valueOrNA(aadhaar_no)}</div>
+              </div>
+              <div class="row">
+                <div class="col-md-6"><strong>Case no:</strong> ${valueOrNA(case_no)}</div>
+                <div class="col-md-6"><strong>FIR no:</strong> ${valueOrNA(fir_no)}</div>
+              </div>
+              <div class="row">
+                <div class="col-md-6"><strong>Police station:</strong> ${valueOrNA(ps)}</div>
+                <div class="col-md-6"><strong>Sections:</strong> ${valueOrNA(sections)}</div>
+              </div>
+              <div class="row">
+                <div class="col-md-12"><strong>Remand Custody:</strong> ${valueOrNA(remand_custody)}</div>
+              </div>
+              <div class="row">
+                <div class="col-md-12"><strong>Medical report:</strong> ${valueOrNA(medical_report)}</div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      // Fetch punishment details
+      var formData = new URLSearchParams();
+      formData.append('section_id', sections);
+      formData.append('csrf_token', '{{ csrf_token }}');
+      fetch('/get_punishment_details', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData.toString() })
+        .then(function(r){ return r.json(); })
+        .then(function(response){
+          if (response.success && Array.isArray(response.items) && response.items.length) {
+            var blocks = response.items.map(function(item){
+              return `
+                <div class="mb-3 p-3 border rounded">
+                  <div class="row">
+                    <div class="col-md-6">
+                      <h6><strong>Category:</strong></h6>
+                      <p>${item.category}</p>
+                    </div>
+                    <div class="col-md-6">
+                      <h6><strong>Sections:</strong></h6>
+                      <p>${item.sections}</p>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-12">
+                      <h6><strong>Offence:</strong></h6>
+                      <p>${item.offence}</p>
+                    </div>
+                  </div>
+                  ${item.possible_punishments ? `
+                  <div class="row">
+                    <div class="col-md-12">
+                      <h6><strong>Possible Punishments:</strong></h6>
+                      <p>${item.possible_punishments}</p>
+                    </div>
+                  </div>` : ''}
+                  <div class="row">
+                    <div class="col-md-12">
+                      <h6><strong>Minimum Fine:</strong></h6>
+                      <p class="text-danger"><strong>${item.minimum_fine}</strong></p>
+                    </div>
+                  </div>
+                </div>`;
+            }).join('');
+
+            var signatureBlock = `
+              <div class="mt-4 p-3 border rounded">
+                <div class="row mb-3">
+                  <div class="col-md-12">
+                    <strong>Statement:</strong>
+                    <p>${valueOrNA(confession_statement)}</p>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-6 text-center">
+                    <div>Accused Signature</div>
+                    <div style="font-size: 12px;">Date: __________</div>
+                  </div>
+                  <div class="col-md-6 text-center">
+                    <div>Authority Signature</div>
+                    <div style="font-size: 12px;">Date: __________</div>
+                  </div>
+                </div>
+              </div>`;
+
+            content.innerHTML = accusedBlock + blocks + signatureBlock;
+          } else {
+            content.innerHTML = '<div class="alert alert-warning">No punishment details found for the provided sections.</div>';
+          }
+        })
+        .catch(function(){
+          content.innerHTML = '<div class="alert alert-danger">Error loading punishment details. Please try again.</div>';
+        });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,454 @@
+{% extends 'admin_base.html' %}
+{% include 'link.html' %}
+{% block page_title %}Add New Accused{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">Add New Accused</li>
+{% endblock %}
+
+{% block content %}
+      <div class="container-fluid">
+        <div class="row-md-12 justify-content-center">
+          <!-- left column -->
+          <div class="col-12 col-md-10 col-lg-8 col-xl-8">
+            <!-- general form elements -->
+            <div class="card card-primary">
+              <div class="card-header">
+                <h3 class="card-title">ADD NEW ACCUSED</h3>
+              </div>
+              <!-- /.card-header -->
+
+              <!-- form start -->
+               <div class="form-container">
+                <form action="{{ url_for('add_accused') }}" method="post" id="accusedForm" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+  <!-- Step 1: Personal Details -->
+  <div class="form-step">
+    <h5><i class="fas fa-user"></i> PERSONAL DETAILS</h5>
+    <label>Accused Name :</label>
+    <input type="text" class="form-control" name="username" placeholder="Accused name" required>
+
+    <label>Care of (Father/Mother/Wife Name)</label>
+    <input type="text" class="form-control" name="relative_name" placeholder="Care of name" required>
+
+    <label>Relation with the person</label>
+    <input type="text" class="form-control" name="relation" placeholder="Relation" required>
+
+    <label>Date-of-Birth</label>
+    <input type="date" class="form-control" name="dob" required>
+
+    <label>Gender</label>
+    <select class="form-control" name="gender" required>
+      <option value="">Select Gender</option>
+      <option value="Male">Male</option>
+      <option value="Female">Female</option>
+      <option value="Other">Other</option>
+    </select>
+
+    <label>Nationality</label>
+    <select class="form-control" name="nationality" required>
+      <option value="">Select Nationality</option>
+      <option value="Indian">Indian</option>
+      <option value="Non-Indian">Non-Indian</option>
+    </select>
+
+    <label>Occupation</label>
+    <input type="text" class="form-control" name="occupation" placeholder="Occupation" required>
+
+    <label>Education</label>
+    <input type="text" class="form-control" name="education" placeholder="Education" required>
+
+    <button type="button" class="btn btn-primary next-btn mt-3">Next</button>
+  </div>
+
+  <!-- Step 2: Address & Contacts -->
+  <div class="form-step" style="display:none">
+    <h5><i class="fas fa-map-marker-alt"></i> ADDRESS & CONTACTS</h5>
+    <label>Permanent Address</label>
+    <textarea class="form-control" name="permanent_address" rows="3" required></textarea>
+
+    <label>Temporary Address [Note: If any]</label>
+    <textarea class="form-control" name="temporary_address" rows="3"></textarea>
+
+    <label>Pincode</label>
+    <input type="text" class="form-control" name="pincode" placeholder="Pincode">
+
+    <label>Mobile No.:</label>
+    <input type="text" class="form-control" name="mobile" placeholder="Mobile No." required>
+
+    <label>Email ID:</label>
+    <input type="email" class="form-control" name="email_id" placeholder="Email ID" required>
+
+    <label>Aadhaar Number</label>
+    <input type="text" class="form-control" name="aadhaar_no" placeholder="12-digit Aadhaar Number">
+
+    <button type="button" class="btn btn-secondary back-btn mt-3">Back</button>
+    <button type="button" class="btn btn-primary next-btn mt-3">Next</button>
+  </div>
+
+  <!-- Step 3: Physical Description & Medical Details -->
+  <div class="form-step" style="display:none">
+    <h5><i class="fas fa-user-md"></i> PHYSICAL DESCRIPTION & MEDICAL DETAILS</h5>
+
+    <div class="row">
+      <div class="col-md-6">
+        <label>Height</label>
+        <input type="text" class="form-control" name="height" placeholder="Height (e.g., 5'8\")">
+      </div>
+      <div class="col-md-6">
+        <label>Weight</label>
+        <input type="text" class="form-control" name="weight" placeholder="Weight (e.g., 70 kg)">
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6">
+        <label>Waist Size</label>
+        <input type="text" class="form-control" name="waist_size" placeholder="Waist size">
+      </div>
+      <div class="col-md-6">
+        <label>Foot Size</label>
+        <input type="text" class="form-control" name="foot_size" placeholder="Foot size">
+      </div>
+    </div>
+
+    <label>Special Mark/Cut</label>
+    <div class="form-group">
+       <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="special_mark_yes_no" value="No" checked>
+        <label class="form-check-label">No</label>
+      </div>
+      <div class="form-check form-check-inline ml-3">
+        <input class="form-check-input" type="radio" name="special_mark_yes_no" value="Yes">
+        <label class="form-check-label">Yes</label>
+      </div>
+    </div>
+    <textarea class="form-control" name="special_mark_cut" rows="2" placeholder="If Yes, describe any special marks, cuts, or scars" style="display:none;" id="special_mark_description"></textarea>
+
+    <label>Skin Color</label>
+    <select class="form-control" name="skin_color">
+      <option value="">Select Skin Color</option>
+      <option value="Fair">Fair</option>
+      <option value="Medium">Medium</option>
+      <option value="Wheatish">Wheatish</option>
+      <option value="Dark">Dark</option>
+      <option value="Very Dark">Very Dark</option>
+    </select>
+
+<label>Tattoo</label>
+<div class="form-group">
+  <div class="form-check form-check-inline">
+    <input class="form-check-input" type="radio" name="tattoo_yes_no" value="No" checked>
+    <label class="form-check-label">No</label>
+  </div>
+  <div class="form-check form-check-inline ml-3">
+    <input class="form-check-input" type="radio" name="tattoo_yes_no" value="Yes">
+    <label class="form-check-label">Yes</label>
+  </div>
+</div>
+
+    <textarea class="form-control" name="tattoo" rows="2" placeholder="If Yes, describe any tattoos or body art" style="display:none;" id="tattoo_description"></textarea>
+
+<label>Accessories Wearing</label>
+<div class="form-group">
+  <div class="form-check form-check-inline">
+    <input class="form-check-input" type="radio" name="accessories_yes_no" value="No" checked>
+    <label class="form-check-label">No</label>
+  </div>
+  <div class="form-check form-check-inline ml-3">
+    <input class="form-check-input" type="radio" name="accessories_yes_no" value="Yes">
+    <label class="form-check-label">Yes</label>
+  </div>
+</div>
+    <textarea class="form-control" name="accessories_wearing" rows="2" placeholder="If Yes, describe accessories worn at time of arrest" style="display:none;" id="accessories_description"></textarea>
+
+    <label>Blood Group</label>
+    <select class="form-control" name="blood_group">
+      <option value="">Select Blood Group</option>
+      <option value="A+">A+</option>
+      <option value="A-">A-</option>
+      <option value="B+">B+</option>
+      <option value="B-">B-</option>
+      <option value="AB+">AB+</option>
+      <option value="AB-">AB-</option>
+      <option value="O+">O+</option>
+      <option value="O-">O-</option>
+    </select>
+
+
+    <label>Special Key Point</label>
+    <textarea class="form-control" name="special_key_point" rows="2" placeholder="Any special observations or key points"></textarea>
+
+<label>Disability</label>
+<div class="form-group">
+  <div class="form-check form-check-inline">
+    <input class="form-check-input" type="radio" name="disability_yes_no" value="No" checked>
+    <label class="form-check-label">No</label>
+  </div>
+  <div class="form-check form-check-inline ml-3">
+    <input class="form-check-input" type="radio" name="disability_yes_no" value="Yes">
+    <label class="form-check-label">Yes</label>
+  </div>
+</div>
+
+    <textarea class="form-control" name="disability" rows="2" placeholder="If Yes, describe any disabilities or medical conditions" style="display:none;" id="disability_description"></textarea>
+
+    <label>Accused Photo</label>
+    <input type="file" class="form-control" name="accused_photo" accept="image/*" capture="camera">
+    <small class="form-text text-muted">Upload a clear photo of the accused (JPG, PNG, or GIF format)</small>
+
+    <button type="button" class="btn btn-secondary back-btn mt-3">Back</button>
+    <button type="button" class="btn btn-primary next-btn mt-3">Next</button>
+  </div>
+
+  <!-- Step 4: Case Details -->
+  <div class="form-step" style="display:none">
+    <h5><i class="fas fa-gavel"></i> CASE DETAILS</h5>
+
+    <label>FIR no</label>
+    <input type="text" class="form-control" name="fir_no" placeholder="FIR number">
+
+    <label>Case Type</label>
+    <select class="form-control" name="case_type" required>
+      <option value="">Select Case Type</option>
+      <option value="Crime">Crime</option>
+      <option value="Women">Women</option>
+      <option value="Child">Child</option>
+      <option value="Senior Citizen">Senior Citizen</option>
+      <option value="Traffic">Traffic</option>
+      <option value="Theft">Theft</option>
+      <option value="Civil">Civil</option>
+      <option value="Mental Harassment">Mental Harassment</option>
+    </select>
+
+    <label>PS</label>
+    <input type="text" class="form-control" name="ps" placeholder="Police Station">
+
+    <label>Case/Crime no</label>
+    <input type="text" class="form-control" name="case_no" placeholder="Case/Crime number" id="case_no_input">
+    <div id="case_no_error" class="invalid-feedback" style="display: none;">This case number already exists. Please use a different case number.</div>
+
+    <label>Sections (IPC & others)</label>
+    <input type="text" class="form-control" name="sections" placeholder="Sections">
+
+    <label>Date of Arrest</label>
+    <input type="date" class="form-control" name="date_of_arrest">
+
+    <label>Place of Arrest</label>
+    <input type="text" class="form-control" name="place_of_arrest" placeholder="Place of Arrest">
+
+    <label>With Warrant Arrest or Not</label>
+    <select class="form-control" name="warrant_arrest">
+      <option value="">Select</option>
+      <option value="Yes">Yes</option>
+      <option value="No">No</option>
+    </select>
+
+    <label>Confession/Statement</label>
+    <textarea class="form-control" name="confession_statement" rows="3" placeholder="Confession or statement"></textarea>
+
+    <button type="button" class="btn btn-secondary back-btn mt-3">Back</button>
+    <button type="button" class="btn btn-primary next-btn mt-3">Next</button>
+  </div>
+
+  <!-- Step 5: Court Forwarding Details & Document Uploads -->
+  <div class="form-step" style="display:none">
+    <h5><i class="fas fa-balance-scale"></i> COURT FORWARDING DETAILS & DOCUMENT UPLOADS</h5>
+
+    <label>Date & Time for Forward</label>
+    <input type="datetime-local" class="form-control" name="court_forward_date_time">
+
+    <label>Police on Remand/Judicial Custody</label>
+    <select class="form-control" name="remand_custody">
+      <option value="">Select</option>
+      <option value="Police Remand">Police Remand</option>
+      <option value="Judicial Custody">Judicial Custody</option>
+      <option value="None">None</option>
+    </select>
+
+    
+
+    <label>Previous Criminal Record</label>
+    <input type="text" class="form-control" name="previous_criminal_record" placeholder="Previous criminal record">
+
+    <hr class="my-4">
+    <h6 class="text-primary"><i class="fas fa-file-upload"></i> Document Uploads</h6>
+
+    <label>Medical Report PDF</label>
+    <input type="file" class="form-control" name="medical_report_pdf" accept=".pdf">
+    <small class="form-text text-muted">Upload medical report in PDF format</small>
+
+    <label>Proof/Evidence PDF</label>
+    <input type="file" class="form-control" name="proof_evidence_pdf" accept=".pdf">
+    <small class="form-text text-muted">Upload proof or evidence documents in PDF format</small>
+
+    <button type="button" class="btn btn-secondary back-btn mt-3">Back</button>
+    <button type="submit" class="btn btn-success mt-3">Submit</button>
+  </div>
+</form>
+               </div>
+              
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const steps = document.querySelectorAll(".form-step");
+    let currentStep = 0;
+
+    function showStep(step) {
+      steps.forEach((el, idx) => {
+        el.style.display = idx === step ? "block" : "none";
+      });
+    }
+
+    showStep(currentStep);
+
+    document.querySelectorAll(".next-btn").forEach(button => {
+      button.addEventListener("click", () => {
+        // Optional: Add validation for current step inputs here
+        if (currentStep < steps.length - 1) {
+          currentStep++;
+          showStep(currentStep);
+          window.scrollTo(0,0);
+        }
+      });
+    });
+
+    document.querySelectorAll(".back-btn").forEach(button => {
+      button.addEventListener("click", () => {
+        if (currentStep > 0) {
+          currentStep--;
+          showStep(currentStep);
+          window.scrollTo(0,0);
+        }
+      });
+    });
+
+    // Handle Yes/No radio buttons for description fields
+    function toggleDescriptionField(radioName, descriptionId) {
+      const radios = document.querySelectorAll(`input[name="${radioName}"]`);
+      const descriptionField = document.getElementById(descriptionId);
+      
+      radios.forEach(radio => {
+        radio.addEventListener('change', function() {
+          if (this.value === 'Yes') {
+            descriptionField.style.display = 'block';
+            descriptionField.required = true;
+          } else {
+            descriptionField.style.display = 'none';
+            descriptionField.required = false;
+            descriptionField.value = '';
+          }
+        });
+      });
+    }
+
+    // Initialize all Yes/No toggles
+    toggleDescriptionField('special_mark_yes_no', 'special_mark_description');
+    toggleDescriptionField('tattoo_yes_no', 'tattoo_description');
+    toggleDescriptionField('accessories_yes_no', 'accessories_description');
+    toggleDescriptionField('disability_yes_no', 'disability_description');
+
+    // Case number validation
+    const caseNoInput = document.getElementById('case_no_input');
+    const caseNoError = document.getElementById('case_no_error');
+    let caseNumbers = []; // This will store existing case numbers
+
+    // Function to check if case number exists
+    function checkCaseNumber(caseNo) {
+      if (!caseNo || caseNo.trim() === '') {
+        caseNoInput.classList.remove('is-invalid');
+        caseNoError.style.display = 'none';
+        return;
+      }
+      
+      // Show loading state
+      caseNoInput.classList.add('is-validating');
+      
+      // Make AJAX call to check case number
+      $.ajax({
+        url: '/check_case_number',
+        method: 'POST',
+        data: {
+          'case_no': caseNo,
+          'csrf_token': '{{ csrf_token }}'
+        },
+        timeout: 5000, // 5 second timeout
+        success: function(response) {
+          caseNoInput.classList.remove('is-validating');
+          if (response.exists) {
+            caseNoInput.classList.add('is-invalid');
+            caseNoError.textContent = response.message;
+            caseNoError.style.display = 'block';
+          } else {
+            caseNoInput.classList.remove('is-invalid');
+            caseNoInput.classList.add('is-valid');
+            caseNoError.style.display = 'none';
+          }
+        },
+        error: function() {
+          // On error, remove validation state and allow submission
+          caseNoInput.classList.remove('is-validating', 'is-invalid');
+          caseNoError.style.display = 'none';
+          console.log('Error checking case number - allowing submission');
+        }
+      });
+    }
+
+    // Add event listener for case number input
+    if (caseNoInput) {
+      caseNoInput.addEventListener('blur', function() {
+        checkCaseNumber(this.value);
+      });
+      
+      caseNoInput.addEventListener('input', function() {
+        if (this.classList.contains('is-invalid')) {
+          checkCaseNumber(this.value);
+        }
+      });
+    }
+
+    // Form submission validation - only check if there's a visible error
+    const form = document.getElementById('accusedForm');
+    if (form) {
+      form.addEventListener('submit', function(e) {
+        // Only prevent submission if there's a visible error
+        if (caseNoInput.classList.contains('is-invalid')) {
+          e.preventDefault();
+          alert('Please fix the case number error before submitting the form.');
+          return false;
+        }
+      });
+    }
+  });
+</script>
+
+            </div>
+            
+            <!-- /.card -->
+          </div>
+
+          {% if success %}
+          <div class="alert alert-success">Accused added successfully!</div>
+          {% endif %}
+
+        </div>
+      </div>
+
+{% include 'scriptfile.html' %}
+
+<script>
+  function validateForm() {
+    var name = document.getElementsByName("username")[0].value;
+    var email = document.getElementsByName("email_id")[0].value;
+    var ipAddress = document.getElementsByName("ip_address")[0].value;
+    var mobNumber = document.getElementsByName("mobile")[0].value;
+
+    if (name === "" || email === "" || ipAddress === "" || mobNumber === "") {
+      alert("All fields must be filled out");
+      return false;
+    }
+    return true;
+  }
+</script>
+{% endblock %}

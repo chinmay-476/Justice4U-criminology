@@ -1,0 +1,67 @@
+{% extends 'super_admin_base.html' %}
+{% include 'link.html' %}
+{% block content %}
+
+    <div class="wrapper">
+
+        <div class="content-header">
+          <div class="container-fluid">
+            <h1 class="m-0">ACCUSED DATABASE</h1>
+          </div>
+        </div>
+
+        <section class="content">
+          <div class="container-fluid">
+            <a href="{{ url_for('search_record') }}" class="btn btn-warning mb-2">
+              Search in Database
+            </a>
+
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Accused Details</h3>
+              </div>
+              <div class="card-body">
+                <table class="table table-striped">
+                  <thead>
+                    <tr>
+                      <th>Sl No</th>
+                      <th>Name</th>
+                      <th>Gender</th>
+                      <th>permanent_address</th>
+                      <th>mobile</th>
+                      <th>case_no</th>
+                      <th>sections</th>
+                      <th>date_of_arrest</th>
+                      <th>place_of_arrest</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+      {% if accused %}
+    {% for person in accused %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>{{ person.username }}</td>
+      <td>{{ person.gender }}</td>
+      <td>{{ person.permanent_address }}</td>
+      <td>{{ person.mobile }}</td>
+      <td>{{ person.case_no }}</td>
+      <td>{{ person.sections }}</td>
+      <td>{{ person.date_of_arrest }}</td>
+      <td>{{ person.place_of_arrest }}</td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="6">No accused records found.</td>
+    </tr>
+    {% endfor %}
+    {% endif %}
+  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+    </div>
+    {% include "scriptfile.html" %}
+
+{% endblock %}

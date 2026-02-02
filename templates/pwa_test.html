@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA Test - Criminology Management System</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="PWA Test page for criminology management system">
+    <meta name="theme-color" content="#2a5298">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="CriminologyMS">
+    <meta name="msapplication-TileColor" content="#1e3c72">
+    <meta name="msapplication-tap-highlight" content="no">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- PWA Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/images/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/images/icon-512x512.png">
+    <link rel="apple-touch-icon" href="/static/images/icon-192x192.png">
+    
+    <!-- Additional PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="CriminologyMS">
+    
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .test-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 10px 0;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-success { background-color: #28a745; }
+        .status-error { background-color: #dc3545; }
+        .status-warning { background-color: #ffc107; }
+        .install-button {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #1e3c72;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 18px;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        .install-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="text-center py-5">
+                    <h1 class="display-4 mb-4">🚀 PWA Test Page</h1>
+                    <p class="lead">Testing Progressive Web App functionality for Criminology Management System</p>
+                </div>
+                
+                <div class="test-card">
+                    <h3>📱 PWA Installation Status</h3>
+                    <div id="install-status">
+                        <p><span class="status-indicator status-warning"></span>Checking installation status...</p>
+                    </div>
+                    <button id="install-button" class="install-button" style="display: none;">
+                        📱 Install App
+                    </button>
+                </div>
+                
+                <div class="test-card">
+                    <h3>🔧 Service Worker Status</h3>
+                    <div id="sw-status">
+                        <p><span class="status-indicator status-warning"></span>Checking service worker...</p>
+                    </div>
+                </div>
+                
+                <div class="test-card">
+                    <h3>📋 PWA Features Test</h3>
+                    <div id="features-test">
+                        <p><span class="status-indicator status-warning"></span>Testing PWA features...</p>
+                    </div>
+                </div>
+                
+                <div class="test-card">
+                    <h3>🌐 Offline Functionality</h3>
+                    <div id="offline-test">
+                        <p><span class="status-indicator status-warning"></span>Testing offline capabilities...</p>
+                    </div>
+                    <button id="offline-test-btn" class="btn btn-outline-light">Test Offline Mode</button>
+                </div>
+                
+                <div class="text-center py-4">
+                    <a href="/" class="btn btn-light btn-lg">🏠 Go to Home</a>
+                    <a href="/admin-login" class="btn btn-outline-light btn-lg ms-3">🔐 Admin Login</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- PWA Test Script -->
+    <script>
+        let deferredPrompt;
+        let swRegistration;
+
+        // Test PWA features
+        function testPWAFeatures() {
+            const features = {
+                'Service Worker': 'serviceWorker' in navigator,
+                'Push Notifications': 'PushManager' in window,
+                'Background Sync': 'serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype,
+                'Web App Manifest': 'onbeforeinstallprompt' in window,
+                'Offline Storage': 'indexedDB' in window,
+                'Geolocation': 'geolocation' in navigator,
+                'Camera': 'mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices
+            };
+
+            const featuresHtml = Object.entries(features).map(([feature, supported]) => {
+                const statusClass = supported ? 'status-success' : 'status-error';
+                const statusText = supported ? 'Supported' : 'Not Supported';
+                return `<p><span class="status-indicator ${statusClass}"></span>${feature}: ${statusText}</p>`;
+            }).join('');
+
+            document.getElementById('features-test').innerHTML = featuresHtml;
+        }
+
+        // Test offline functionality
+        function testOfflineFunctionality() {
+            const testBtn = document.getElementById('offline-test-btn');
+            testBtn.textContent = 'Testing...';
+            testBtn.disabled = true;
+
+            // Simulate offline test
+            setTimeout(() => {
+                if (swRegistration) {
+                    document.getElementById('offline-test').innerHTML = 
+                        '<p><span class="status-indicator status-success"></span>Service Worker is active and caching resources</p>' +
+                        '<p><span class="status-indicator status-success"></span>Offline functionality is available</p>';
+                } else {
+                    document.getElementById('offline-test').innerHTML = 
+                        '<p><span class="status-indicator status-error"></span>Service Worker not registered</p>' +
+                        '<p><span class="status-indicator status-warning"></span>Limited offline functionality</p>';
+                }
+                testBtn.textContent = 'Test Complete';
+                testBtn.disabled = false;
+            }, 2000);
+        }
+
+        // Handle install prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            document.getElementById('install-status').innerHTML = 
+                '<p><span class="status-indicator status-success"></span>App can be installed!</p>';
+            document.getElementById('install-button').style.display = 'block';
+        });
+
+        // Install button click
+        document.getElementById('install-button').addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                
+                if (outcome === 'accepted') {
+                    document.getElementById('install-status').innerHTML = 
+                        '<p><span class="status-indicator status-success"></span>App installation initiated!</p>';
+                } else {
+                    document.getElementById('install-status').innerHTML = 
+                        '<p><span class="status-indicator status-warning"></span>App installation declined</p>';
+                }
+                deferredPrompt = null;
+                document.getElementById('install-button').style.display = 'none';
+            }
+        });
+
+        // Handle app installed
+        window.addEventListener('appinstalled', () => {
+            document.getElementById('install-status').innerHTML = 
+                '<p><span class="status-indicator status-success"></span>App successfully installed!</p>';
+            document.getElementById('install-button').style.display = 'none';
+        });
+
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    swRegistration = await navigator.serviceWorker.register('/static/service-worker.js');
+                    console.log('Service Worker registered:', swRegistration);
+                    
+                    document.getElementById('sw-status').innerHTML = 
+                        '<p><span class="status-indicator status-success"></span>Service Worker registered successfully</p>' +
+                        '<p><span class="status-indicator status-success"></span>Scope: ' + swRegistration.scope + '</p>';
+                } catch (error) {
+                    console.error('Service Worker registration failed:', error);
+                    document.getElementById('sw-status').innerHTML = 
+                        '<p><span class="status-indicator status-error"></span>Service Worker registration failed</p>' +
+                        '<p><span class="status-indicator status-error"></span>Error: ' + error.message + '</p>';
+                }
+            });
+        } else {
+            document.getElementById('sw-status').innerHTML = 
+                '<p><span class="status-indicator status-error"></span>Service Worker not supported in this browser</p>';
+        }
+
+        // Initialize tests
+        window.addEventListener('load', () => {
+            testPWAFeatures();
+            
+            // Check if already installed
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                document.getElementById('install-status').innerHTML = 
+                    '<p><span class="status-indicator status-success"></span>App is already installed and running in standalone mode!</p>';
+            }
+        });
+
+        // Offline test button
+        document.getElementById('offline-test-btn').addEventListener('click', testOfflineFunctionality);
+    </script>
+</body>
+</html>

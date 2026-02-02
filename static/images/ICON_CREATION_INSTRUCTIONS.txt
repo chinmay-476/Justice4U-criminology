@@ -1,0 +1,22 @@
+# PWA Icon Creation Instructions
+# 
+# To create proper PNG icons from the SVG files, you can use one of these methods:
+#
+# Method 1: Using Inkscape (Free)
+# inkscape --export-png=icon-192x192.png --export-width=192 --export-height=192 icon-192x192.svg
+# inkscape --export-png=icon-512x512.png --export-width=512 --export-height=512 icon-512x512.svg
+#
+# Method 2: Using ImageMagick (Free)
+# magick icon-192x192.svg -resize 192x192 icon-192x192.png
+# magick icon-512x512.svg -resize 512x512 icon-512x512.png
+#
+# Method 3: Online converters
+# - Upload the SVG files to online SVG to PNG converters
+# - Set the dimensions to 192x192 and 512x512 respectively
+#
+# Method 4: Using Python with cairosvg
+# pip install cairosvg
+# python -c "import cairosvg; cairosvg.svg2png(url='icon-192x192.svg', write_to='icon-192x192.png', output_width=192, output_height=192)"
+# python -c "import cairosvg; cairosvg.svg2png(url='icon-512x512.svg', write_to='icon-512x512.png', output_width=512, output_height=512)"
+#
+# For now, the SVG files will work as icons, but PNG format is recommended for better compatibility.

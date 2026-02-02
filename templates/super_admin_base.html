@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Super Admin Panel - Justice4U{% endblock %}</title>
+
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap/dist/css/bootstrap.min.css">
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <!-- AdminLTE CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+  
+  <!-- Custom Super Admin CSS -->
+  <style>
+    /* Fixed navbar positioning */
+    .main-header {
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1030;
+        width: 100%;
+        background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+    }
+
+    /* Adjust content wrapper to account for fixed navbar */
+    .content-wrapper {
+        margin-top: 56px !important;
+        min-height: calc(100vh - 56px);
+        margin-left: 250px !important; /* align content area with sidebar */
+        padding-left: 0 !important;
+    }
+
+    /* Collapsed sidebar layout - apply at the body level for reliability */
+    body.sidebar-collapsed .content-wrapper {
+        margin-left: 0 !important;
+    }
+    body.sidebar-collapsed .main-footer {
+        margin-left: 0 !important;
+    }
+
+    /* (Removed older relative footer styles to ensure fixed footer applies consistently) */
+
+    /* Footer when sidebar is collapsed */
+    .sidebar-collapse + .content-wrapper .main-footer,
+    body.sidebar-collapsed .main-footer {
+        margin-left: 0 !important;
+        width: 100%;
+    }
+
+    /* Ensure proper spacing for the page content */
+    .wrapper {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+    }
+
+    /* Adjust sidebar positioning */
+    .main-sidebar {
+        position: fixed !important;
+        top: 56px;
+        height: calc(100vh - 56px);
+        left: 0;
+        z-index: 1020;
+        width: 250px;
+        transition: all 0.3s ease;
+        background: linear-gradient(180deg, #5D4037 0%, #6D4C41 100%);
+    }
+
+    /* Sidebar collapsed state */
+    .main-sidebar.sidebar-collapse {
+        margin-left: -250px;
+    }
+
+    /* Content area adjustments - responsive to sidebar state */
+    .content {
+        padding-left: 15px !important;
+        padding-right: 15px !important;
+        padding-top: 0;
+        transition: all 0.3s ease;
+    }
+
+    /* Content wrapper when sidebar is collapsed (sibling fallback) */
+    .sidebar-collapse + .content-wrapper {
+        margin-left: 0 !important;
+    }
+
+    /* Content header adjustments */
+    .content-header {
+        padding-left: 15px !important;
+        padding-right: 15px !important;
+        transition: all 0.3s ease;
+    }
+
+    /* Content header when sidebar is collapsed */
+    .sidebar-collapse + .content-wrapper .content-header,
+    body.sidebar-collapsed .content-header {
+        margin-left: 0 !important;
+    }
+
+    /* Container fluid adjustments */
+    .container-fluid {
+        padding-left: 15px !important;
+        padding-right: 15px !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    /* Card adjustments */
+    .card {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    /* Sidebar styling */
+    .sidebar .nav-link {
+        color: #ecf0f1 !important;
+        transition: all 0.3s ease;
+    }
+
+    .sidebar .nav-link:hover {
+        background-color: rgba(255, 215, 0, 0.1) !important;
+        color: #ffd700 !important;
+    }
+
+    .sidebar .nav-link.active {
+        background-color: #ffd700 !important;
+        color: #8B4513 !important;
+    }
+
+    .sidebar .nav-link i {
+        margin-right: 10px;
+        width: 20px;
+        text-align: center;
+    }
+
+    /* User panel styling */
+    .user-panel {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding-bottom: 15px;
+        margin-bottom: 15px;
+    }
+
+    .user-panel .info a {
+        color: #ecf0f1 !important;
+        font-weight: bold;
+    }
+
+    /* Navbar styling */
+    .navbar-nav .nav-link {
+        color: white !important;
+    }
+
+    .navbar-nav .nav-link:hover {
+        color: #ffd700 !important;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .content {
+            margin-left: 0 !important;
+            width: 100% !important;
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+        }
+        
+        .content-header {
+            margin-left: 0 !important;
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+        }
+        
+        .container-fluid {
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+        }
+        
+        .main-sidebar {
+            top: 56px;
+            margin-left: -250px; /* Hide sidebar by default on mobile */
+        }
+        
+        .main-sidebar.show {
+            margin-left: 0; /* Show sidebar when toggled on mobile */
+        }
+        
+        .content-wrapper {
+            margin-left: 0 !important;
+        }
+        
+        .main-footer {
+            left: 0 !important;
+            width: 100% !important;
+        }
+        
+        .content-wrapper {
+            padding-bottom: 60px;
+        }
+    }
+
+    /* Additional fixes for better alignment */
+    .row {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    .col-md-12, .col-sm-6, .col-sm-12 {
+        padding-left: 15px !important;
+        padding-right: 15px !important;
+    }
+
+    /* Remove any unwanted margins from body */
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background-color: #f4f4f4;
+    }
+
+    /* Additional layout fixes */
+    .main-header .navbar-nav {
+        margin-left: 0 !important;
+    }
+
+    /* Ensure proper content alignment */
+    .content-wrapper > .content {
+        padding: 15px !important;
+    }
+
+    /* Fix any Bootstrap container issues */
+    .container-fluid {
+        max-width: 100% !important;
+    }
+
+    /* Ensure cards take full width of their container */
+    .card {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* Fix table responsiveness */
+    .table-responsive {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Ensure proper spacing for pagination */
+    .pagination {
+        margin: 0 !important;
+    }
+
+    /* Fix any AdminLTE specific issues */
+    .content-wrapper {
+        background-color: #f4f4f4;
+    }
+
+    /* Ensure sidebar doesn't interfere with content */
+    .main-sidebar {
+        box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    }
+
+    /* Footer positioning (non-fixed for super admin, aligned with admin) */
+    .main-footer {
+        position: relative;
+        margin-top: auto;
+        margin-left: 250px !important;
+        transition: all 0.3s ease;
+        width: calc(100% - 250px);
+    }
+
+    /* Footer when sidebar is collapsed */
+    .sidebar-collapse + .content-wrapper .main-footer,
+    body.sidebar-collapsed .main-footer {
+        margin-left: 0 !important;
+        width: 100%;
+    }
+
+    /* Content wrapper retains default height without extra bottom padding */
+    .content-wrapper {
+        min-height: calc(100vh - 56px);
+    }
+
+    /* Content area adjustments */
+    .content {
+        padding-bottom: 20px;
+    }
+
+    /* Prevent horizontal scrolling */
+    body, html {
+        overflow-x: hidden;
+    }
+
+    .wrapper {
+        overflow-x: hidden;
+    }
+
+    /* Footer content alignment */
+    .main-footer strong {
+        margin: 0;
+    }
+
+    .main-footer .float-right {
+        margin: 0;
+    }
+
+    /* Ensure footer doesn't interfere with content */
+    .main-footer * {
+        box-sizing: border-box;
+    }
+
+
+    /* Page header styling */
+    .content-header h1 {
+        color: #8B4513;
+        font-weight: bold;
+        margin-bottom: 0;
+    }
+
+    .breadcrumb {
+        background: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .breadcrumb-item a {
+        color: #8B4513;
+        text-decoration: none;
+    }
+
+    .breadcrumb-item.active {
+        color: #6c757d;
+    }
+
+    /* Stats cards */
+    .stats-card {
+        background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .stats-card .stats-icon {
+        font-size: 2.5rem;
+        opacity: 0.8;
+    }
+
+    .stats-card .stats-number {
+        font-size: 2rem;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+
+    .stats-card .stats-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+
+    /* Enhanced form elements */
+    .form-control {
+        border-radius: 8px;
+        border: 2px solid rgba(0, 0, 0, 0.1);
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+        font-weight: 500;
+        background: white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .form-control:focus {
+        border-color: #A0522D;
+        box-shadow: 0 0 0 0.2rem rgba(160, 82, 45, 0.25);
+        background: white;
+    }
+
+    .form-select {
+        border-radius: 8px;
+        border: 2px solid rgba(0, 0, 0, 0.1);
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+        font-weight: 500;
+        background: white;
+    }
+
+    .form-select:focus {
+        border-color: #A0522D;
+        box-shadow: 0 0 0 0.2rem rgba(160, 82, 45, 0.25);
+    }
+
+    /* Enhanced buttons */
+    .btn {
+        border-radius: 8px;
+        font-weight: 600;
+        padding: 0.75rem 1.5rem;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        font-size: 0.9rem;
+        letter-spacing: 0.5px;
+        position: relative;
+        overflow: hidden;
+        border: none;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+        color: white;
+    }
+
+    .btn-success {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+    }
+
+    .btn-warning {
+        background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+        color: white;
+    }
+
+    .btn-info {
+        background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%);
+        color: white;
+    }
+
+    /* Enhanced cards */
+    .card {
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        background: white;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+
+    .card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, rgba(139, 69, 19, 0.1) 0%, rgba(160, 82, 45, 0.1) 100%);
+        border-bottom: 2px solid #A0522D;
+        padding: 1.25rem;
+        font-family: 'Poppins', sans-serif;
+        font-weight: 600;
+        color: wheat;
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    .card-title {
+        color: #8B4513;
+        font-family: 'Poppins', sans-serif;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+
+    /* Enhanced tables */
+    .table {
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        background: white;
+    }
+
+    .table thead th {
+        background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+        color: white;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.9rem;
+        letter-spacing: 0.5px;
+        border: none;
+        padding: 1rem;
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .table tbody tr {
+        transition: all 0.3s ease;
+    }
+
+    .table tbody tr:hover {
+        background: rgba(160, 82, 45, 0.1);
+        transform: scale(1.01);
+    }
+
+    .table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-color: rgba(0, 0, 0, 0.05);
+        font-weight: 500;
+    }
+
+    .table-striped tbody tr:nth-of-type(odd) {
+        background-color: rgba(248, 249, 250, 0.5);
+    }
+
+    /* Enhanced alerts */
+    .alert {
+        border: none;
+        border-radius: 8px;
+        font-weight: 500;
+        padding: 1rem 1.5rem;
+        border-left: 4px solid;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .alert-success {
+        background: rgba(40, 167, 69, 0.15);
+        border-left-color: #28a745;
+        color: #155724;
+    }
+
+    .alert-info {
+        background: rgba(23, 162, 184, 0.15);
+        border-left-color: #17a2b8;
+        color: #0c5460;
+    }
+
+    .alert-warning {
+        background: rgba(255, 193, 7, 0.15);
+        border-left-color: #ffc107;
+        color: #856404;
+    }
+
+    .alert-danger {
+        background: rgba(220, 53, 69, 0.15);
+        border-left-color: #dc3545;
+        color: #721c24;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <!-- Navbar -->
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link" data-widget="pushmenu" href="#" role="button" title="Toggle Sidebar">
+            <i class="fas fa-bars" id="sidebar-toggle-icon"></i>
+          </a>
+        </li>
+        <li class="nav-item">
+          <span class="navbar-text">
+            <i class="fas fa-crown me-2"></i>
+            <strong>Super Admin Panel</strong>
+          </span>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('super_admin_dashboard') }}" title="Dashboard">
+            <i class="fas fa-home me-1"></i>
+            Dashboard
+          </a>
+        </li>
+      </ul>
+      <ul class="navbar-nav ml-auto">
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+            <i class="fas fa-user-crown me-2"></i>
+            {% if session.super_admin_username %}{{ session.super_admin_username }}{% else %}Super Admin{% endif %}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="{{ url_for('super_admin_logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+          </ul>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Sidebar -->
+    <aside class="main-sidebar sidebar-dark-primary elevation-4">
+      <div class="sidebar">
+        <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+          <div class="info">
+            <a href="#" class="d-block">
+              <i class="fas fa-user-crown me-2"></i>
+              {% if session.super_admin_username %}{{ session.super_admin_username }}{% else %}Super Admin User{% endif %}
+            </a>
+          </div>
+        </div>
+
+        <nav class="mt-2">
+          <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview">
+            
+            <!-- MANAGE USERS -->
+            <li class="nav-item">
+              <a href="#" class="nav-link">
+                <i class="fas fa-users"></i>
+                <p>MANAGE USERS <i class="right fas fa-angle-left"></i></p>
+              </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="{{ url_for('department') }}" class="nav-link {% if request.endpoint == 'department' %}active{% endif %}">
+                    <i class="fas fa-building"></i>
+                    <p>Department</p>
+                  </a>
+                </li>
+                
+                <li class="nav-item">
+                  <a href="{{ url_for('it_team_details') }}" class="nav-link {% if request.endpoint == 'it_team_details' %}active{% endif %}">
+                    <i class="fas fa-user-tie"></i>
+                    <p>Admin Team</p>
+                  </a>
+                </li>
+                
+                <li class="nav-item">
+                  <a href="{{ url_for('user_change_password') }}" class="nav-link {% if request.endpoint == 'user_change_password' %}active{% endif %}">
+                    <i class="fas fa-key"></i>
+                    <p>Change Password</p>
+                  </a>
+                </li>
+              </ul>
+            </li>
+            <!-- MANAGE ACCUSED -->
+            <li class="nav-item">
+              <a href="#" class="nav-link">
+                <i class="fas fa-users"></i>
+                <p>MANAGE ACCUSED <i class="right fas fa-angle-left"></i></p>
+              </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="{{ url_for('super_accused') }}" class="nav-link {% if request.endpoint == 'super_accused' %}active{% endif %}">
+                    <i class="fas fa-building"></i>
+                    <p>Accused Details</p>
+                  </a>
+                </li>
+              </ul>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="{{ url_for('super_sections') }}" class="nav-link {% if request.endpoint == 'super_sections' %}active{% endif %}">
+                    <i class="fas fa-building"></i>
+                    <p>Sections</p>
+                  </a>
+                </li>
+              </ul>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="{{ url_for('super_admin_messages') }}" class="nav-link {% if request.endpoint == 'super_admin_messages' %}active{% endif %}">
+                    <i class="fas fa-envelope"></i>
+                    <p>Super Admin Messages</p>
+                  </a>
+                </li>
+              </ul>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="{{ url_for('super_admin_judgements') }}" class="nav-link {% if request.endpoint == 'super_admin_judgements' %}active{% endif %}">
+                    <i class="fas fa-scale-balanced"></i>
+                    <p>Judge Decisions</p>
+                  </a>
+                </li>
+              </ul>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="{{ url_for('criminal_records') }}" class="nav-link {% if request.endpoint == 'criminal_records' %}active{% endif %}">
+                    <i class="fas fa-building"></i>
+                    <p>Criminal Records</p>
+                  </a>
+                </li>
+              </ul>
+            </li>
+            
+            
+
+          </ul>
+        </nav>
+      </div>
+    </aside>
+
+    <!-- Page Content -->
+    <div class="content-wrapper flex-grow-1">
+      <!-- Content Header -->
+      <div class="content-header">
+        <div class="container-fluid">
+          <div class="row mb-2">
+            <div class="col-sm-6">
+              <h1>{% block page_title %}Super Admin Panel{% endblock %}</h1>
+            </div>
+            <div class="col-sm-6">
+              <ol class="breadcrumb float-sm-right">
+                <li class="breadcrumb-item"><a href="{{ url_for('super_admin_dashboard') }}">Home</a></li>
+                {% block breadcrumb %}{% endblock %}
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main content -->
+      <div class="content">
+        <div class="container-fluid">
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                  <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else 'check-circle' }} me-2"></i>
+                  {{ message }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+
+          {% block content %}{% endblock %}
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <footer class="main-footer">
+        <strong>Copyright &copy; 2024 <a href="{{ url_for('home') }}">Justice4U</a>.</strong>
+        All rights reserved.
+        <div class="float-right d-none d-sm-inline-block">
+          <b>Version</b> 2.0.0
+        </div>
+      </footer>
+    </div>
+  </div>
+  
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <!-- Bootstrap Bundle (JS + Popper) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- AdminLTE JS -->
+  <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+  
+  <!-- Sidebar Toggle Script -->
+  <script>
+    $(document).ready(function () {
+      // Sidebar toggle functionality
+      $('[data-widget="pushmenu"]').on('click', function (e) {
+        e.preventDefault();
+        $('.main-sidebar').toggleClass('sidebar-collapse');
+        $('body').toggleClass('sidebar-collapsed');
+        // Clear any inline styles to avoid compounding margins (but not footer)
+        $('.content, .content-header').attr('style', '');
+      });
+
+      // Mobile sidebar toggle
+      $(window).resize(function() {
+        // Do not set inline styles; CSS media queries handle layout
+        $('.content, .content-header').attr('style', '');
+      });
+
+      // Close sidebar when clicking outside on mobile
+      $(document).on('click', function(e) {
+        if ($(window).width() <= 768) {
+          if (!$(e.target).closest('.main-sidebar, [data-widget="pushmenu"]').length) {
+            $('.main-sidebar').removeClass('show');
+          }
+        }
+      });
+
+      // Auto-hide alerts after 5 seconds
+      setTimeout(function() {
+        $('.alert').fadeOut('slow');
+      }, 5000);
+    });
+  </script>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

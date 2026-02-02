@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="192" height="192" viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3c72;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2a5298;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="192" height="192" rx="20" fill="url(#bg)"/>
+  
+  <!-- Shield Icon -->
+  <g transform="translate(96, 96)">
+    <path d="M-40,-30 L40,-30 L40,20 C40,40 -20,60 -20,60 C-20,60 -40,40 -40,20 Z" 
+          fill="#ffd700" stroke="#ffffff" stroke-width="3"/>
+    
+    <!-- Justice Scale -->
+    <g transform="translate(0, -10)">
+      <!-- Scale Base -->
+      <line x1="-25" y1="15" x2="25" y1="15" stroke="#ffffff" stroke-width="2"/>
+      <line x1="0" y1="15" x2="0" y1="25" stroke="#ffffff" stroke-width="2"/>
+      
+      <!-- Scale Pans -->
+      <ellipse cx="-15" cy="10" rx="8" ry="3" fill="#ffffff" opacity="0.8"/>
+      <ellipse cx="15" cy="10" rx="8" ry="3" fill="#ffffff" opacity="0.8"/>
+      
+      <!-- Scale Strings -->
+      <line x1="-15" y1="10" x2="-15" y1="15" stroke="#ffffff" stroke-width="1"/>
+      <line x1="15" y1="10" x2="15" y1="15" stroke="#ffffff" stroke-width="1"/>
+    </g>
+    
+    <!-- Text -->
+    <text x="0" y="45" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="12" font-weight="bold">CRIM</text>
+  </g>
+</svg>
