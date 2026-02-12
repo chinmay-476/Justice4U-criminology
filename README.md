@@ -1,158 +1,119 @@
 # Criminology Management System
 
-This project is a Flask + MySQL web application for managing criminal case records, complaint descriptions, legal sections, and role-based review workflows (Admin, Super Admin, Judge).
+Flask application for criminal case records, complaint tracking, section/punishment lookup, and role-based workflows (Admin, Super Admin, Judge).
 
-## 1) Project Overview
+## Stack
 
-- Backend: Flask (`app.py`) with SQLAlchemy ORM.
-- Database: MySQL (`criminology` schema) via `PyMySQL`.
-- Frontend: Jinja templates + AdminLTE/Bootstrap static assets.
-- PWA support: `manifest.json`, `service-worker.js`, and `/pwa-test`.
-- File uploads: accused photo, medical report PDF, and evidence PDF into `uploads/`.
+- Flask + SQLAlchemy + Flask-WTF
+- Database via `DATABASE_URL` (default SQLite, MySQL supported)
+- Jinja templates + static AdminLTE assets
 
-Main code now lives in:
-- `flask_project/criminology/app.py` (entrypoint + app factory)
-- `flask_project/criminology/config.py` (configuration)
-- `flask_project/criminology/extensions.py` (shared Flask extensions)
-- `flask_project/criminology/models.py` (SQLAlchemy models)
-- `flask_project/criminology/decorators.py` (auth decorators)
-- `flask_project/criminology/routes/` (feature-based route modules)
-- `flask_project/criminology/templates/`
-- `flask_project/criminology/static/`
-- `flask_project/complete_database_setup.sql`
+## Project Layout
 
-## 2) Functional Modules
+- `app.py`: app creation, extension initialization, startup schema checks, security headers
+- `config.py`: configuration from environment
+- `extensions.py`: `db`, `csrf`
+- `models.py`: SQLAlchemy models
+- `decorators.py`: access-control decorators
+- `security.py`: login throttling and shared input/file/link validators
+- `routes/`:
+  - `public_routes.py`
+  - `admin_routes.py`
+  - `super_admin_routes.py`
+  - `judge_routes.py`
+  - `utility_routes.py`
+- `tests/test_security_utils.py`: validation tests for security helpers
 
-- **Accused Management**
-  - Create, list, search, edit, delete accused records.
-  - Stores personal details, address, and case details.
-- **Complaint Management**
-  - Add complaint descriptions against a case number.
-  - Complaint types include Crime, Women, Child, Theft, etc.
-- **Section/Punishment Knowledge Base**
-  - Manage legal sections and associated punishments/fines.
-  - Fetch details through AJAX endpoint (`/get_punishment_details`).
-- **Admin Team Management**
-  - Create and remove admin accounts.
-  - Admin password reset flow.
-- **Judge Workflow**
-  - Judge login, review pending cases, mark solved, submit decisions.
-  - Save/end case-wise meeting links.
-- **Super Admin Workflow**
-  - Dashboard stats, judgement view, message/reply center.
-  - Can manage IT team records and accused records.
-- **Reporting**
-  - Date-range report joining accused + complaint data (`/fetch_report`).
+## Security and Auth (Current)
 
-## 3) Data Model (Core Tables)
+- Admin authentication is database-backed (hashed passwords).
+- Super Admin and Judge login now use environment variables, not route-hardcoded constants.
+- Login throttling is enforced for:
+  - Admin login
+  - Super Admin login
+  - Judge login
+- Role guards:
+  - `admin_required`
+  - `super_admin_required`
+  - `judge_required`
+  - `admin_or_super_admin_required`
+- Sensitive management flows are guarded (admin/super-admin protected), including:
+  - admin creation
+  - admin password reset
+  - section management
+  - report access
+  - super-admin accused/section pages
+- Upload and meeting-link validation is centralized in `security.py`.
+- Global response security headers are added in `app.py`.
 
-Defined in `app.py` models and `complete_database_setup.sql`:
+## Environment Variables
 
-- `user`: lightweight system users.
-- `admin`: admin team credentials and contact.
-- `accused`: central case/person record (personal, medical, address, case, court forwarding).
-- `section_punishment`: legal sections/articles with offence and punishment details.
-- `complaint_description`: complaint type + description linked to `accused.case_no`.
-- `super_admin_message`: escalation messages and replies for super admin.
-- `judge_decision`: judge status (`Pending`/`Solved`) plus fine/imprisonment.
-- `meeting_link`: per-case online meeting links and status (`Ongoing`/`Ended`).
+### Core
 
-Key relationships:
-- `complaint_description.case_no -> accused.case_no`
-- `super_admin_message.case_no -> accused.case_no`
-- `judge_decision.case_no -> accused.case_no`
-- `meeting_link.case_no -> accused.case_no`
+- `SECRET_KEY`
+- `DATABASE_URL` (examples: `sqlite:///criminology.db`, `mysql+pymysql://user:pass@host:3306/dbname`)
+- `UPLOAD_FOLDER` (default: `uploads`)
+- `SESSION_COOKIE_SECURE` (`true` in production HTTPS)
+- `SESSION_COOKIE_SAMESITE` (default: `Lax`)
+- `SESSION_LIFETIME_HOURS` (default: `8`)
 
-## 4) Route Map (High-Level)
+### Role Credentials
 
-Route modules:
-- `routes/public_routes.py`
-- `routes/admin_routes.py`
-- `routes/super_admin_routes.py`
-- `routes/judge_routes.py`
-- `routes/utility_routes.py`
+- `SUPER_ADMIN_USERNAME` (default fallback: `admin`)
+- `SUPER_ADMIN_EMAIL` (default fallback: `admin@criminology.com`)
+- `SUPER_ADMIN_PASSWORD` (default fallback: `admin123`)
+- `JUDGE_USERNAME` (default fallback: `judge`)
+- `JUDGE_PASSWORD` (default fallback: `judge123`)
 
-### Public / General
+## Key Endpoints
+
+### Public
+
 - `/`, `/home`, `/about-us`, `/contact-us`
-- `/add_user`, `/add_accused`, `/user_details`
-- `/search_record`, `/submit_search`
-- `/submit_complain`, `/add_user_complain`
-- `/criminal_records`, `/fetch_report`
+- `/auth-center`
 - `/manifest.json`, `/service-worker.js`, `/sw.js`, `/pwa-test`
+- `/health`
 
 ### Admin
+
 - `/admin-login`, `/admin-logout`
 - `/admin-dashboard`
-- `/admin/accused-details`, `/admin/accused/edit/<id>`, `/admin/accused/delete/<id>`
-- `/admin/complaint-description`, `/admin/section-management`
-- `/admin/criminal-records`
+- `/admin/accused-details`
+- `/admin/complaint-description`
+- `/admin/section-management`
 
 ### Super Admin
+
 - `/super_admin_login`, `/super_admin_logout`
 - `/super-admin-dashboard`
 - `/super_admin/judgements`
-- `/super-admin/messages`, `/super-admin/messages/<id>/reply`
-- `/super-admin/save_meeting_link`
-- `/super_accused`, `/super_accused/edit/<id>`, `/super_accused/delete/<id>`
-- `/super_sections`, `/delete_it_team/<id>`
+- `/super-admin/messages`
 
 ### Judge
+
 - `/judge-login`, `/judge-logout`
 - `/judge-dashboard`, `/judge/pending`, `/judge/solved`
-- `/judge/submit-decision`, `/judge/mark-solved`
-- `/judge/save_meeting_link`, `/judge/end_meeting/<id>`
 
-### AJAX / Utility Endpoints
-- `/get_punishment_details`
-- `/get_meeting_link`
-- `/check_case_number`
-- `/get_case_numbers`
-- `/contact_super_admin`
+## Run
 
-## 5) Setup and Run
+From `flask_project/criminology/`:
 
-1. Create virtual environment and install dependencies:
-   - `pip install -r flask_project/criminology/requirements.txt`
-2. Prepare MySQL database:
-   - Option A: run `flask_project/complete_database_setup.sql`.
-   - Option B: let SQLAlchemy auto-create tables on first app start.
-3. Update DB connection in `flask_project/criminology/app.py`:
-   - `app.config['SQLALCHEMY_DATABASE_URI']`
-4. Start app:
-   - `python flask_project/criminology/app.py`
-5. Open:
-   - `http://127.0.0.1:5000`
+```bash
+pip install -r requirements.txt
+python app.py
+```
 
-## 6) Authentication and Roles
+Default URL: `http://127.0.0.1:5000`
 
-- **Admin login**: checks `admin` table (hashed password).
-- **Super Admin login**: hard-coded credential path in `app.py`.
-- **Judge login**: hard-coded credential path in `app.py`.
-- Session keys used:
-  - `admin_logged_in`
-  - `super_admin_logged_in`
-  - `judge_logged_in`
+## Tests
 
-## 7) PWA Notes
+From `flask_project/criminology/`:
 
-- `manifest.json` defines app metadata, icons, shortcuts.
-- `service-worker.js` caches static and dynamic routes.
-- Background sync code exists but is placeholder (returns empty submissions).
+```bash
+python -m unittest tests/test_security_utils.py
+```
 
-## 8) Analysis Findings (Current Risks / Gaps)
+## Notes
 
-- Secrets and DB credentials are hard-coded in `app.py` (secret key, DB URI).
-- Super admin and judge credentials are hard-coded.
-- Some write routes are not role-protected, so data operations rely mainly on UI flow.
-- Legacy field-name mismatch exists in sample-data route (`sections`/`offence` vs model `article_section`/`offense`).
-- Typo risk in super-admin accused edit path (`remand_cuddy`) can break updates.
-- Upload validation mainly uses filename extension checks.
-
-## 9) Recommended Next Improvements
-
-- Move secrets/credentials to environment variables (`.env`) and rotate keys.
-- Enforce role checks on sensitive create/update/delete routes.
-- Normalize schema/migration strategy (Alembic/Flask-Migrate).
-- Add server-side validation for all critical fields (case number uniqueness, Aadhaar format, file MIME).
-- Add automated tests for auth, CRUD flows, and judge/super-admin decisions.
-- Split `app.py` into blueprints (`auth`, `admin`, `judge`, `public`, `api`) for maintainability.
+- Defaults for judge/super-admin credentials are still present as fallbacks; set explicit environment values for production.
+- CSRF extension is enabled; a small number of JSON endpoints remain `@csrf.exempt` by design.
