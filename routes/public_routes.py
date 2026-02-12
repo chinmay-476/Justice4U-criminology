@@ -1,14 +1,13 @@
-import os
 import re
 from datetime import datetime
 
-from flask import flash, jsonify, redirect, render_template, request, url_for
+from flask import flash, jsonify, redirect, render_template, request, session, url_for
 from flask_wtf.csrf import generate_csrf
 from sqlalchemy import func
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
-from decorators import admin_required
+from decorators import admin_or_super_admin_required, admin_required
 from extensions import csrf, db
 from models import (
     Accused,
@@ -17,6 +16,16 @@ from models import (
     SectionPunishment,
     SuperAdminMessage,
 )
+from security import (
+    check_login_block,
+    clear_login_failures,
+    is_valid_case_no,
+    record_login_failure,
+    save_validated_upload,
+)
+
+ALLOWED_DOCUMENT_EXTENSIONS = {'pdf'}
+ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png'}
 
 
 
@@ -55,19 +64,23 @@ def register_public_routes(app):
         )
 
     @app.route('/user_details')
+    @admin_required
     def user_details():
         accused_list = Accused.query.all()
         return render_template('user_details.html', accused=accused_list)
 
     @app.route('/add_user')
+    @admin_required
     def add_user():
         return render_template('add_user.html', csrf_token=generate_csrf())
 
     @app.route('/super_add_user')
+    @admin_or_super_admin_required
     def super_add_user():
         return render_template('super_add_user.html', csrf_token=generate_csrf())
 
     @app.route('/add_accused', methods=['POST'])
+    @admin_required
     def add_accused():
         username = request.form.get('username')
         relative_name = request.form.get('relative_name')
@@ -100,26 +113,31 @@ def register_public_routes(app):
         proof_evidence_pdf = None
         accused_photo = None
 
-        if 'medical_report_pdf' in request.files:
-            medical_file = request.files['medical_report_pdf']
-            if medical_file and medical_file.filename:
-                filename = secure_filename(f"medical_report_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf")
-                medical_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                medical_report_pdf = filename
-
-        if 'proof_evidence_pdf' in request.files:
-            evidence_file = request.files['proof_evidence_pdf']
-            if evidence_file and evidence_file.filename:
-                filename = secure_filename(f"proof_evidence_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf")
-                evidence_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                proof_evidence_pdf = filename
-
-        if 'accused_photo' in request.files:
-            photo_file = request.files['accused_photo']
-            if photo_file and photo_file.filename:
-                filename = secure_filename(f"accused_photo_{username}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg")
-                photo_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                accused_photo = filename
+        try:
+            medical_report_pdf = save_validated_upload(
+                request.files.get('medical_report_pdf'),
+                app.config['UPLOAD_FOLDER'],
+                f"medical_report_{secure_filename(username or 'unknown')}",
+                ALLOWED_DOCUMENT_EXTENSIONS,
+                app.config['MAX_CONTENT_LENGTH'],
+            )
+            proof_evidence_pdf = save_validated_upload(
+                request.files.get('proof_evidence_pdf'),
+                app.config['UPLOAD_FOLDER'],
+                f"proof_evidence_{secure_filename(username or 'unknown')}",
+                ALLOWED_DOCUMENT_EXTENSIONS,
+                app.config['MAX_CONTENT_LENGTH'],
+            )
+            accused_photo = save_validated_upload(
+                request.files.get('accused_photo'),
+                app.config['UPLOAD_FOLDER'],
+                f"accused_photo_{secure_filename(username or 'unknown')}",
+                ALLOWED_IMAGE_EXTENSIONS,
+                app.config['MAX_CONTENT_LENGTH'],
+            )
+        except ValueError as upload_error:
+            flash(str(upload_error), 'error')
+            return redirect(url_for('add_user'))
 
         special_key_point = request.form.get('special_key_point')
 
@@ -137,6 +155,9 @@ def register_public_routes(app):
         case_type = request.form.get('case_type')
         ps = request.form.get('ps')
         case_no = request.form.get('case_no')
+        if not is_valid_case_no(case_no):
+            flash('Please enter a valid case number format.', 'error')
+            return redirect(url_for('add_user'))
         sections = request.form.get('sections')
         date_of_arrest = request.form.get('date_of_arrest')
         place_of_arrest = request.form.get('place_of_arrest')
@@ -220,20 +241,40 @@ def register_public_routes(app):
             return redirect(url_for('add_user'))
 
     @app.route('/it_team_details')
+    @admin_or_super_admin_required
     def it_team_details():
         team = Admin.query.all()
         return render_template('it_team_details.html', team=team, csrf_token=generate_csrf())
 
     @app.route('/add_it_team')
+    @admin_or_super_admin_required
     def add_it_team():
         return render_template('add_it_team.html', csrf_token=generate_csrf())
 
     @app.route('/add_admin', methods=['POST'])
+    @admin_or_super_admin_required
     def add_admin():
-        username = request.form['username']
-        password = request.form['password']
-        mobile_no = request.form['mobile']
-        email = request.form['email_id']
+        username = (request.form.get('username') or '').strip()
+        password = request.form.get('password') or ''
+        mobile_no = (request.form.get('mobile') or '').strip()
+        email = (request.form.get('email_id') or '').strip().lower()
+
+        if not username or not password or not mobile_no or not email:
+            flash('All fields are required.', 'error')
+            return redirect(url_for('add_it_team'))
+
+        if len(password) < 8:
+            flash('Password must be at least 8 characters long.', 'error')
+            return redirect(url_for('add_it_team'))
+
+        if not re.match(r'^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$', email):
+            flash('Please enter a valid email address.', 'error')
+            return redirect(url_for('add_it_team'))
+
+        existing = Admin.query.filter((Admin.username == username) | (Admin.email == email) | (Admin.mobile_no == mobile_no)).first()
+        if existing:
+            flash('An admin with same username, email, or mobile already exists.', 'error')
+            return redirect(url_for('add_it_team'))
 
         new_admin = Admin(
             username=username,
@@ -244,7 +285,7 @@ def register_public_routes(app):
 
         db.session.add(new_admin)
         db.session.commit()
-
+        flash('Admin account created successfully.', 'success')
         return redirect(url_for('it_team_details'))
 
     @app.route('/submit_complain', methods=['GET', 'POST'])
@@ -415,6 +456,7 @@ def register_public_routes(app):
         return jsonify({'success': True, 'items': items})
 
     @app.route('/manage_sections')
+    @admin_or_super_admin_required
     def manage_sections():
         page = request.args.get('page', 1, type=int)
         sections_pagination = SectionPunishment.query.paginate(page=page, per_page=15, error_out=False)
@@ -426,11 +468,25 @@ def register_public_routes(app):
         )
 
     @app.route('/add_section', methods=['POST'])
+    @admin_or_super_admin_required
     def add_section():
         article_section = request.form.get('article_section') or request.form.get('sections')
         offense = request.form.get('offense') or request.form.get('offence')
+        category = (request.form.get('category') or '').strip()
+        article_section = (article_section or '').strip()
+        offense = (offense or '').strip()
+
+        if not category or not article_section or not offense:
+            flash('Category, section, and offense are required.', 'error')
+            return redirect(url_for('manage_sections'))
+
+        existing = SectionPunishment.query.filter_by(article_section=article_section).first()
+        if existing:
+            flash('This section already exists.', 'error')
+            return redirect(url_for('manage_sections'))
+
         new_section = SectionPunishment(
-            category=request.form.get('category'),
+            category=category,
             article_section=article_section,
             offense=offense,
             possible_punishments=request.form.get('possible_punishments'),
@@ -443,6 +499,7 @@ def register_public_routes(app):
         return redirect(url_for('manage_sections'))
 
     @app.route('/populate_sample_data')
+    @admin_or_super_admin_required
     def populate_sample_data():
         sample_data = [
             {
@@ -493,6 +550,7 @@ def register_public_routes(app):
         return redirect(url_for('manage_sections'))
 
     @app.route('/fetch_report', methods=['GET', 'POST'])
+    @admin_or_super_admin_required
     def fetch_report():
         results = None
         if request.method == 'POST':
@@ -512,16 +570,20 @@ def register_public_routes(app):
         return render_template('fetch_report.html', results=results, csrf_token=generate_csrf())
 
     @app.route('/user_change_password')
+    @admin_or_super_admin_required
     def user_change_password():
         return render_template('user_change_password.html', admins=Admin.query.all(), csrf_token=generate_csrf())
 
     @app.route('/admin_password_reset', methods=['GET', 'POST'])
+    @admin_or_super_admin_required
     def admin_password_reset():
         if request.method == 'POST':
             try:
                 admin_id = request.form.get('admin_id')
                 new_password = request.form.get('new_password')
                 confirm_password = request.form.get('confirm_password')
+                is_super_admin = bool(session.get('super_admin_logged_in'))
+                current_admin_id = session.get('admin_id')
 
                 if not admin_id:
                     flash('Please select an admin.', 'error')
@@ -532,8 +594,11 @@ def register_public_routes(app):
                 if new_password != confirm_password:
                     flash('Passwords do not match.', 'error')
                     return redirect(url_for('user_change_password'))
-                if len(new_password) < 6:
-                    flash('Password must be at least 6 characters long.', 'error')
+                if len(new_password) < 8:
+                    flash('Password must be at least 8 characters long.', 'error')
+                    return redirect(url_for('user_change_password'))
+                if not is_super_admin and (not current_admin_id or str(current_admin_id) != str(admin_id)):
+                    flash('You can only reset your own password.', 'error')
                     return redirect(url_for('user_change_password'))
 
                 admin = Admin.query.get(admin_id)
@@ -573,10 +638,14 @@ def register_public_routes(app):
             password = request.form.get('password', '').strip()
             remember = request.form.get('remember')
 
+            blocked, remaining_seconds = check_login_block('admin_panel')
+            if blocked:
+                flash(f'Too many failed attempts. Try again in {remaining_seconds} seconds.', 'error')
+                return render_template('admin_login.html', csrf_token=generate_csrf())
+
             admin = Admin.query.filter_by(email=email).first()
             if admin and check_password_hash(admin.password, password):
-                from flask import session
-
+                session.clear()
                 session['admin_logged_in'] = True
                 session['admin_username'] = admin.username
                 session['admin_id'] = admin.id
@@ -584,15 +653,15 @@ def register_public_routes(app):
                 if remember:
                     session.permanent = True
 
+                clear_login_failures('admin_panel')
                 flash('Login successful! Welcome to the admin panel.', 'success')
                 return redirect(url_for('admin_dashboard'))
+            record_login_failure('admin_panel')
             flash('Invalid username or password. Please try again.', 'error')
         return render_template('admin_login.html', csrf_token=generate_csrf())
 
     @app.route('/admin-logout')
     def admin_logout():
-        from flask import session
-
         session.clear()
         flash('You have been logged out successfully.', 'success')
         return redirect(url_for('admin_login'))
@@ -600,7 +669,7 @@ def register_public_routes(app):
     @app.route('/check_case_number', methods=['POST'])
     def check_case_number():
         case_no = request.form.get('case_no', '').strip()
-        if not case_no:
+        if not is_valid_case_no(case_no):
             return jsonify({'exists': False, 'message': 'Case number is required'})
 
         existing_accused = Accused.query.filter_by(case_no=case_no).first()
@@ -638,6 +707,9 @@ def register_public_routes(app):
 
         if not case_type or not case_no or not message:
             flash('All fields are required.', 'error')
+            return redirect('/add_complaint_description')
+        if not is_valid_case_no(case_no):
+            flash('Invalid case number format.', 'error')
             return redirect('/add_complaint_description')
 
         accused = Accused.query.filter_by(case_no=case_no).first()

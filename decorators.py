@@ -14,6 +14,17 @@ def admin_required(f):
     return decorated_function
 
 
+def admin_or_super_admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('admin_logged_in') and not session.get('super_admin_logged_in'):
+            flash('Please log in with admin privileges.', 'error')
+            return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
 def super_admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):

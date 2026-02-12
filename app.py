@@ -24,6 +24,14 @@ def create_app():
 
     register_all_routes(app)
 
+    @app.after_request
+    def add_security_headers(response):
+        response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        response.headers.setdefault('X-Frame-Options', 'DENY')
+        response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+        response.headers.setdefault('Content-Security-Policy', "default-src 'self' 'unsafe-inline' data: https:;")
+        return response
+
     return app
 
 

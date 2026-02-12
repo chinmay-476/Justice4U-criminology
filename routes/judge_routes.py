@@ -1,3 +1,5 @@
+import hmac
+import os
 from datetime import datetime
 
 from flask import flash, jsonify, redirect, render_template, request, session, url_for
@@ -6,6 +8,13 @@ from flask_wtf.csrf import generate_csrf
 from decorators import judge_required
 from extensions import csrf, db
 from models import Accused, JudgeDecision, MeetingLink
+from security import (
+    check_login_block,
+    clear_login_failures,
+    is_valid_case_no,
+    is_valid_meeting_link,
+    record_login_failure,
+)
 
 
 
@@ -14,7 +23,7 @@ def register_judge_routes(app):
     @csrf.exempt
     def get_meeting_link():
         case_no = request.form.get('case_no', '').strip()
-        if not case_no:
+        if not is_valid_case_no(case_no):
             return jsonify({'success': False, 'message': 'Case number is required'})
 
         meeting = (
@@ -33,14 +42,24 @@ def register_judge_routes(app):
             password = request.form.get('password')
             remember = request.form.get('remember')
 
-            if username == 'judge' and password == 'judge123':
+            blocked, remaining_seconds = check_login_block('judge')
+            if blocked:
+                flash(f'Too many failed attempts. Try again in {remaining_seconds} seconds.', 'error')
+                return render_template('judge_login.html', csrf_token=generate_csrf())
+
+            expected_username = os.getenv('JUDGE_USERNAME', 'judge')
+            expected_password = os.getenv('JUDGE_PASSWORD', 'judge123')
+
+            if hmac.compare_digest((username or '').strip(), expected_username) and hmac.compare_digest((password or '').strip(), expected_password):
                 session.clear()
                 session['judge_logged_in'] = True
                 session['judge_username'] = 'Judge'
                 if remember:
                     session.permanent = True
+                clear_login_failures('judge')
                 flash('Judge login successful.', 'success')
                 return redirect(url_for('judge_dashboard'))
+            record_login_failure('judge')
             flash('Invalid judge credentials.', 'error')
         return render_template('judge_login.html', csrf_token=generate_csrf())
 
@@ -189,8 +208,10 @@ def register_judge_routes(app):
     def judge_save_meeting_link():
         case_no = request.form.get('case_no', '').strip()
         link = request.form.get('link', '').strip()
-        if not case_no or not link:
-            return jsonify({'success': False, 'message': 'Missing case number or link'}), 400
+        if not is_valid_case_no(case_no):
+            return jsonify({'success': False, 'message': 'Invalid case number'}), 400
+        if not is_valid_meeting_link(link):
+            return jsonify({'success': False, 'message': 'Invalid meeting link'}), 400
 
         existing = MeetingLink.query.filter_by(case_no=case_no, status='Ongoing').all()
         for meeting in existing:

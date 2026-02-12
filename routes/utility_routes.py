@@ -1,8 +1,14 @@
-from flask import render_template, send_from_directory
+from datetime import datetime
+
+from flask import jsonify, render_template, send_from_directory
 
 
 
 def register_utility_routes(app):
+    @app.route('/health')
+    def health():
+        return jsonify({'success': True, 'status': 'ok', 'timestamp': datetime.utcnow().isoformat() + 'Z'})
+
     @app.route('/uploads/<filename>')
     def uploaded_file(filename):
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)

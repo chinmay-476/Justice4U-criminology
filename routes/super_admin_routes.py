@@ -1,3 +1,5 @@
+import hmac
+import os
 from datetime import datetime
 
 from flask import flash, jsonify, redirect, render_template, request, session, url_for
@@ -15,6 +17,13 @@ from models import (
     SectionPunishment,
     SuperAdminMessage,
     User,
+)
+from security import (
+    check_login_block,
+    clear_login_failures,
+    is_valid_case_no,
+    is_valid_meeting_link,
+    record_login_failure,
 )
 
 
@@ -39,15 +48,27 @@ def register_super_admin_routes(app):
             password = request.form.get('password', '').strip()
             remember = request.form.get('remember')
 
-            if (username == 'admin' or username == 'admin@criminology.com') and password == 'admin123':
+            blocked, remaining_seconds = check_login_block('super_admin')
+            if blocked:
+                flash(f'Too many failed attempts. Try again in {remaining_seconds} seconds.', 'error')
+                return render_template('super_admin_login.html', csrf_token=generate_csrf())
+
+            expected_username = os.getenv('SUPER_ADMIN_USERNAME', 'admin')
+            expected_email = os.getenv('SUPER_ADMIN_EMAIL', 'admin@criminology.com')
+            expected_password = os.getenv('SUPER_ADMIN_PASSWORD', 'admin123')
+
+            valid_identity = username in {expected_username, expected_email}
+            if valid_identity and hmac.compare_digest(password, expected_password):
                 session.clear()
                 session['super_admin_logged_in'] = True
                 session['super_admin_username'] = 'Super Admin'
                 if remember:
                     session.permanent = True
+                clear_login_failures('super_admin')
                 flash('Super Admin login successful.', 'success')
                 return redirect(url_for('super_admin_dashboard'))
 
+            record_login_failure('super_admin')
             flash('Invalid super admin credentials.', 'error')
         return render_template('super_admin_login.html', csrf_token=generate_csrf())
 
@@ -97,8 +118,10 @@ def register_super_admin_routes(app):
     def super_admin_save_meeting_link():
         case_no = request.form.get('case_no', '').strip()
         link = request.form.get('link', '').strip()
-        if not case_no or not link:
-            return jsonify({'success': False, 'message': 'Missing case number or link'}), 400
+        if not is_valid_case_no(case_no):
+            return jsonify({'success': False, 'message': 'Invalid case number'}), 400
+        if not is_valid_meeting_link(link):
+            return jsonify({'success': False, 'message': 'Invalid meeting link'}), 400
 
         existing = MeetingLink.query.filter_by(case_no=case_no, status='Ongoing').all()
         for meeting in existing:
@@ -153,6 +176,7 @@ def register_super_admin_routes(app):
         return redirect(url_for('super_admin_messages'))
 
     @app.route('/super_accused')
+    @super_admin_required
     def super_accused():
         accused_list = Accused.query.all()
         return render_template('super_accused.html', accused=accused_list, csrf_token=generate_csrf())
@@ -275,6 +299,7 @@ def register_super_admin_routes(app):
         return render_template('super_edit_user.html', accused=accused, csrf_token=generate_csrf())
 
     @app.route('/super_sections')
+    @super_admin_required
     def super_sections():
         page = request.args.get('page', 1, type=int)
         sections_pagination = SectionPunishment.query.paginate(page=page, per_page=15, error_out=False)
