@@ -19,6 +19,19 @@ class Admin(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
 
 
+class MasterAuth(db.Model):
+    __tablename__ = 'master_auth'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    email = db.Column(db.String(255), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    can_admin = db.Column(db.Boolean, nullable=False, default=True)
+    can_super_admin = db.Column(db.Boolean, nullable=False, default=True)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
 class Accused(db.Model):
     __tablename__ = 'accused'
 

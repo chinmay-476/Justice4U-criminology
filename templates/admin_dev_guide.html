@@ -1,0 +1,163 @@
+{% extends base_template %}
+{% block title %}Developer Guide - Justice4U{% endblock %}
+{% block page_title %}Developer Guide{% endblock %}
+
+{% block content %}
+<div class="card mb-3">
+  <div class="card-body">
+    <h4 class="mb-2">System Overview</h4>
+    <p class="mb-1">Purpose: judicial workflow digitization for accused records, hearings, and governed role operations.</p>
+    <p class="mb-0">Stack: Flask, SQLAlchemy, Jinja templates, HTTP-polling WebRTC signaling.</p>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <h5>Backend Modules</h5>
+    <div class="table-responsive">
+      <table class="table table-sm table-striped mb-0">
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Purpose</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for module in backend_modules %}
+          <tr>
+            <td><code>{{ module.file }}</code></td>
+            <td>{{ module.purpose }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-6 mb-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5>Frontend Surface</h5>
+        <p class="mb-2"><strong>Templates:</strong> {{ template_files|length }}</p>
+        <ul class="mb-2">
+          {% for item in template_files[:14] %}
+          <li><code>{{ item }}</code></li>
+          {% endfor %}
+        </ul>
+        <p class="mb-1"><strong>Static Roots</strong></p>
+        <ul class="mb-0">
+          {% for item in static_roots %}
+          <li><code>{{ item }}</code></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6 mb-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5>Realtime / Video Call Layer</h5>
+        <ul class="mb-0">
+          {% for note in realtime_notes %}
+          <li>{{ note }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <h5>Database Schema (SQLAlchemy Metadata)</h5>
+    {% for table_name, columns in db_schema.items() %}
+    <div class="mb-2">
+      <strong>{{ table_name }}</strong>
+      <div class="small text-muted">{{ columns|join(', ') }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <h5>API Inventory</h5>
+    <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+      <table class="table table-sm table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Methods</th>
+            <th>Path</th>
+            <th>Auth</th>
+            <th>Endpoint</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in api_inventory %}
+          <tr>
+            <td><code>{{ row.methods }}</code></td>
+            <td><code>{{ row.path }}</code></td>
+            <td>{{ row.auth }}</td>
+            <td><code>{{ row.endpoint }}</code></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <h5>Video Call Validation Status</h5>
+    <p class="mb-1"><strong>Validation date:</strong> {{ video_validation_status.date }}</p>
+    <p class="mb-2">{{ video_validation_status.automated }}</p>
+    <p class="mb-1"><strong>Remaining limits</strong></p>
+    <ul class="mb-2">
+      {% for item in video_validation_status.limits %}
+      <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+    <p class="mb-1"><strong>Manual production checklist</strong></p>
+    <ul class="mb-0">
+      {% for item in video_validation_status.manual_checklist %}
+      <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-6 mb-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5>Run / Setup / Test</h5>
+        <ul class="mb-0">
+          {% for cmd in runbook %}
+          <li><code>{{ cmd }}</code></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6 mb-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5>Missing Capabilities Backlog</h5>
+        {% for group in backlog %}
+        <div class="mb-2">
+          <strong>{{ group.priority }} - {{ group.title }}</strong>
+          <ul class="mb-0">
+            {% for item in group["items"] %}
+            <li>{{ item }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Justice4U Video Call</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .video-grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+    .video-card {
+      background: #111827;
+      border-radius: 0.75rem;
+      padding: 0.75rem;
+      color: #fff;
+    }
+    video {
+      width: 100%;
+      height: 240px;
+      object-fit: cover;
+      background: #000;
+      border-radius: 0.5rem;
+    }
+    .chat-panel {
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+    .chat-log {
+      height: 280px;
+      overflow-y: auto;
+      border: 1px solid #dee2e6;
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      background: #f8f9fa;
+    }
+    .chat-item {
+      margin-bottom: 0.75rem;
+    }
+    .chat-meta {
+      font-size: 0.8rem;
+      color: #6c757d;
+      margin-bottom: 0.25rem;
+    }
+    .chat-bubble {
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .chat-image {
+      max-width: 220px;
+      border-radius: 0.5rem;
+      border: 1px solid #dee2e6;
+      background: #fff;
+    }
+  </style>
+</head>
+<body class="bg-light">
+  <nav class="navbar navbar-dark" style="background:#1e3c72;">
+    <div class="container d-flex justify-content-between">
+      <span class="navbar-brand mb-0 h1">
+        <i class="fas fa-video me-2"></i>Justice4U Video Call
+      </span>
+      <span class="text-white-50">Room: {{ room_id }}</span>
+    </div>
+  </nav>
+
+  <div class="container py-4">
+    {% if not active %}
+      <div class="alert alert-danger mb-0">
+        This call room is inactive or ended.
+      </div>
+    {% else %}
+      <div class="row mb-3">
+        <div class="col-md-8">
+          <h4 class="mb-1">Case No: {{ case_no }}</h4>
+          <div id="statusText" class="text-muted">Not connected</div>
+        </div>
+        <div class="col-md-4 text-md-end">
+          <button id="joinBtn" class="btn btn-primary">Join Call</button>
+          <button id="leaveBtn" class="btn btn-danger" disabled>Leave</button>
+        </div>
+      </div>
+
+      <div class="video-grid mb-3">
+        <div class="video-card">
+          <div class="mb-2">You</div>
+          <video id="localVideo" autoplay playsinline muted></video>
+        </div>
+        <div class="video-card">
+          <div class="mb-2">Remote</div>
+          <video id="remoteVideo" autoplay playsinline></video>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 flex-wrap">
+        <button id="toggleMicBtn" class="btn btn-outline-secondary" disabled>Mute Mic</button>
+        <button id="toggleCameraBtn" class="btn btn-outline-secondary" disabled>Stop Camera</button>
+        <button id="copyLinkBtn" class="btn btn-outline-primary">Copy Room Link</button>
+      </div>
+
+      <div class="chat-panel">
+        <h5 class="mb-3">Chat and Image Sharing</h5>
+        <div id="chatLog" class="chat-log mb-3"></div>
+        <div class="input-group mb-2">
+          <input id="chatInput" type="text" class="form-control" placeholder="Type a message..." maxlength="1000" disabled>
+          <button id="sendChatBtn" class="btn btn-primary" disabled>Send</button>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <input id="imageInput" type="file" accept="image/*" class="form-control" style="max-width: 320px;" disabled>
+          <button id="sendImageBtn" class="btn btn-outline-primary" disabled>Send Image</button>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+  {% if active %}
+  <script>
+    const roomId = {{ room_id | tojson }};
+    const roomLink = window.location.href;
+
+    const joinUrl = `/api/video-call/${encodeURIComponent(roomId)}/join`;
+    const eventsUrl = `/api/video-call/${encodeURIComponent(roomId)}/events`;
+    const signalUrl = `/api/video-call/${encodeURIComponent(roomId)}/signal`;
+    const leaveUrl = `/api/video-call/${encodeURIComponent(roomId)}/leave`;
+
+    const statusText = document.getElementById('statusText');
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+    const joinBtn = document.getElementById('joinBtn');
+    const leaveBtn = document.getElementById('leaveBtn');
+    const toggleMicBtn = document.getElementById('toggleMicBtn');
+    const toggleCameraBtn = document.getElementById('toggleCameraBtn');
+    const copyLinkBtn = document.getElementById('copyLinkBtn');
+    const chatLog = document.getElementById('chatLog');
+    const chatInput = document.getElementById('chatInput');
+    const sendChatBtn = document.getElementById('sendChatBtn');
+    const imageInput = document.getElementById('imageInput');
+    const sendImageBtn = document.getElementById('sendImageBtn');
+
+    let clientId = null;
+    let isInitiator = false;
+    let localStream = null;
+    let peerConnection = null;
+    let pollTimer = null;
+    let lastEventId = 0;
+    let offerSent = false;
+
+    const rtcConfig = {
+      iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }]
+    };
+
+    function setStatus(message) {
+      statusText.textContent = message;
+    }
+
+    function appendChatMessage(kind, payload, senderLabel) {
+      const item = document.createElement('div');
+      item.className = 'chat-item';
+
+      const meta = document.createElement('div');
+      meta.className = 'chat-meta';
+      meta.textContent = `${senderLabel} • ${new Date().toLocaleTimeString()}`;
+      item.appendChild(meta);
+
+      if (kind === 'chat_image') {
+        const image = document.createElement('img');
+        image.className = 'chat-image';
+        image.alt = 'Shared image';
+        image.src = payload.image_data || '';
+        item.appendChild(image);
+      } else {
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble';
+        bubble.textContent = payload.message || '';
+        item.appendChild(bubble);
+      }
+
+      chatLog.appendChild(item);
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    async function ensureLocalStream() {
+      if (localStream) return localStream;
+      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      localVideo.srcObject = localStream;
+      toggleMicBtn.disabled = false;
+      toggleCameraBtn.disabled = false;
+      return localStream;
+    }
+
+    async function createPeerConnection() {
+      if (peerConnection) return peerConnection;
+      peerConnection = new RTCPeerConnection(rtcConfig);
+      if (localStream) {
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+      }
+      peerConnection.ontrack = (event) => {
+        if (event.streams && event.streams[0]) {
+          remoteVideo.srcObject = event.streams[0];
+        }
+      };
+      peerConnection.onicecandidate = async (event) => {
+        if (!event.candidate) return;
+        await sendSignal('candidate', event.candidate);
+      };
+      peerConnection.onconnectionstatechange = () => {
+        const state = peerConnection.connectionState || 'connecting';
+        if (state === 'connected') setStatus('Call connected');
+        if (state === 'failed' || state === 'disconnected') setStatus('Connection interrupted');
+      };
+      return peerConnection;
+    }
+
+    async function sendSignal(type, payload) {
+      if (!clientId) return;
+      await fetch(signalUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: clientId,
+          type,
+          payload
+        })
+      });
+    }
+
+    async function startOfferIfNeeded() {
+      if (!isInitiator || offerSent) return;
+      await ensureLocalStream();
+      const pc = await createPeerConnection();
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      await sendSignal('offer', offer);
+      offerSent = true;
+      setStatus('Offer sent, waiting for participant');
+    }
+
+    async function handleEvent(event) {
+      if (!event || !event.type) return;
+      if (event.type === 'participant_joined') {
+        setStatus('Participant joined');
+        await startOfferIfNeeded();
+        return;
+      }
+      if (event.type === 'participant_left' || event.type === 'hangup') {
+        setStatus('Participant left');
+        if (remoteVideo.srcObject) remoteVideo.srcObject = null;
+        offerSent = false;
+        return;
+      }
+
+      if (event.type === 'offer') {
+        await ensureLocalStream();
+        const pc = await createPeerConnection();
+        await pc.setRemoteDescription(new RTCSessionDescription(event.payload));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        await sendSignal('answer', answer);
+        setStatus('Answer sent');
+        return;
+      }
+
+      if (event.type === 'answer') {
+        if (!peerConnection) return;
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(event.payload));
+        setStatus('Call connected');
+        return;
+      }
+
+      if (event.type === 'chat_text') {
+        appendChatMessage('chat_text', event.payload || {}, 'Remote');
+        return;
+      }
+
+      if (event.type === 'chat_image') {
+        appendChatMessage('chat_image', event.payload || {}, 'Remote');
+        return;
+      }
+
+      if (event.type === 'candidate') {
+        if (!peerConnection) return;
+        try {
+          await peerConnection.addIceCandidate(new RTCIceCandidate(event.payload));
+        } catch (error) {
+          console.warn('Failed to add ICE candidate', error);
+        }
+      }
+    }
+
+    async function pollEvents() {
+      if (!clientId) return;
+      try {
+        const response = await fetch(`${eventsUrl}?client_id=${encodeURIComponent(clientId)}&last_event_id=${lastEventId}`);
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!data.success) return;
+        lastEventId = data.last_event_id || lastEventId;
+        const events = data.events || [];
+        for (const event of events) {
+          await handleEvent(event);
+        }
+      } catch (error) {
+        console.warn('Polling failed', error);
+      }
+    }
+
+    async function joinCall() {
+      try {
+        await ensureLocalStream();
+        const response = await fetch(joinUrl, { method: 'POST' });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          setStatus(data.message || 'Unable to join call');
+          return;
+        }
+
+        clientId = data.client_id;
+        isInitiator = !!data.is_initiator;
+        lastEventId = data.last_event_id || 0;
+
+        joinBtn.disabled = true;
+        leaveBtn.disabled = false;
+        chatInput.disabled = false;
+        sendChatBtn.disabled = false;
+        imageInput.disabled = false;
+        sendImageBtn.disabled = false;
+        setStatus(isInitiator ? 'Waiting for participant' : 'Connected to room');
+
+        pollTimer = setInterval(pollEvents, 1000);
+        await pollEvents();
+        if (isInitiator && data.participants > 1) {
+          await startOfferIfNeeded();
+        }
+      } catch (error) {
+        setStatus('Unable to access camera/microphone');
+      }
+    }
+
+    async function leaveCall() {
+      if (!clientId) return;
+      try {
+        await sendSignal('hangup', {});
+        await fetch(leaveUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ client_id: clientId })
+        });
+      } catch (error) {}
+
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+      if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+      }
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+      }
+
+      localVideo.srcObject = null;
+      remoteVideo.srcObject = null;
+      clientId = null;
+      offerSent = false;
+      joinBtn.disabled = false;
+      leaveBtn.disabled = true;
+      chatInput.disabled = true;
+      sendChatBtn.disabled = true;
+      imageInput.disabled = true;
+      sendImageBtn.disabled = true;
+      imageInput.value = '';
+      toggleMicBtn.disabled = true;
+      toggleCameraBtn.disabled = true;
+      toggleMicBtn.textContent = 'Mute Mic';
+      toggleCameraBtn.textContent = 'Stop Camera';
+      setStatus('Call ended');
+    }
+
+    joinBtn.addEventListener('click', joinCall);
+    leaveBtn.addEventListener('click', leaveCall);
+
+    toggleMicBtn.addEventListener('click', () => {
+      if (!localStream) return;
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (!audioTrack) return;
+      audioTrack.enabled = !audioTrack.enabled;
+      toggleMicBtn.textContent = audioTrack.enabled ? 'Mute Mic' : 'Unmute Mic';
+    });
+
+    toggleCameraBtn.addEventListener('click', () => {
+      if (!localStream) return;
+      const videoTrack = localStream.getVideoTracks()[0];
+      if (!videoTrack) return;
+      videoTrack.enabled = !videoTrack.enabled;
+      toggleCameraBtn.textContent = videoTrack.enabled ? 'Stop Camera' : 'Start Camera';
+    });
+
+    copyLinkBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(roomLink);
+        setStatus('Room link copied');
+      } catch (error) {
+        window.prompt('Copy call link:', roomLink);
+      }
+    });
+
+    async function sendChatMessage() {
+      const message = (chatInput.value || '').trim();
+      if (!message || !clientId) return;
+      await sendSignal('chat_text', { message });
+      appendChatMessage('chat_text', { message }, 'You');
+      chatInput.value = '';
+    }
+
+    async function sendImageMessage() {
+      if (!clientId || !imageInput.files || !imageInput.files[0]) return;
+      const file = imageInput.files[0];
+      if (!file.type.startsWith('image/')) {
+        setStatus('Please choose an image file');
+        return;
+      }
+      if (file.size > 1024 * 1024) {
+        setStatus('Image must be 1MB or smaller');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const imageData = reader.result;
+        await sendSignal('chat_image', { image_data: imageData });
+        appendChatMessage('chat_image', { image_data: imageData }, 'You');
+        imageInput.value = '';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    sendChatBtn.addEventListener('click', sendChatMessage);
+    chatInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        sendChatMessage();
+      }
+    });
+    sendImageBtn.addEventListener('click', sendImageMessage);
+
+    window.addEventListener('beforeunload', () => {
+      if (clientId) {
+        navigator.sendBeacon(leaveUrl, JSON.stringify({ client_id: clientId }));
+      }
+    });
+  </script>
+  {% endif %}
+</body>
+</html>

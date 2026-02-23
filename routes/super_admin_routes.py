@@ -1,10 +1,12 @@
 import hmac
 import os
+import secrets
 from datetime import datetime
 
 from flask import flash, jsonify, redirect, render_template, request, session, url_for
 from flask_wtf.csrf import generate_csrf
 from sqlalchemy import func
+from werkzeug.security import check_password_hash
 
 from decorators import super_admin_required
 from extensions import csrf, db
@@ -13,6 +15,7 @@ from models import (
     Admin,
     ComplaintDescription,
     JudgeDecision,
+    MasterAuth,
     MeetingLink,
     SectionPunishment,
     SuperAdminMessage,
@@ -22,7 +25,6 @@ from security import (
     check_login_block,
     clear_login_failures,
     is_valid_case_no,
-    is_valid_meeting_link,
     record_login_failure,
 )
 
@@ -45,6 +47,7 @@ def register_super_admin_routes(app):
     def super_admin_login():
         if request.method == 'POST':
             username = request.form.get('email', '').strip()
+            identity = username.lower()
             password = request.form.get('password', '').strip()
             remember = request.form.get('remember')
 
@@ -52,6 +55,22 @@ def register_super_admin_routes(app):
             if blocked:
                 flash(f'Too many failed attempts. Try again in {remaining_seconds} seconds.', 'error')
                 return render_template('super_admin_login.html', csrf_token=generate_csrf())
+
+            master = MasterAuth.query.filter_by(email=identity).first()
+            if (
+                master
+                and master.is_active
+                and master.can_super_admin
+                and check_password_hash(master.password_hash, password)
+            ):
+                session.clear()
+                session['super_admin_logged_in'] = True
+                session['super_admin_username'] = 'Master Super Admin'
+                if remember:
+                    session.permanent = True
+                clear_login_failures('super_admin')
+                flash('Master super-admin login successful.', 'success')
+                return redirect(url_for('super_admin_dashboard'))
 
             expected_username = os.getenv('SUPER_ADMIN_USERNAME', 'admin')
             expected_email = os.getenv('SUPER_ADMIN_EMAIL', 'admin@criminology.com')
@@ -117,11 +136,12 @@ def register_super_admin_routes(app):
     @super_admin_required
     def super_admin_save_meeting_link():
         case_no = request.form.get('case_no', '').strip()
-        link = request.form.get('link', '').strip()
         if not is_valid_case_no(case_no):
             return jsonify({'success': False, 'message': 'Invalid case number'}), 400
-        if not is_valid_meeting_link(link):
-            return jsonify({'success': False, 'message': 'Invalid meeting link'}), 400
+
+        room_suffix = secrets.token_urlsafe(6).replace('-', '').replace('_', '')
+        room_id = f"{case_no.replace('/', '-').replace(' ', '')}-{room_suffix}"
+        link = url_for('video_call_room', room_id=room_id, _external=True)
 
         existing = MeetingLink.query.filter_by(case_no=case_no, status='Ongoing').all()
         for meeting in existing:
@@ -132,7 +152,7 @@ def register_super_admin_routes(app):
         try:
             db.session.add(new_meeting)
             db.session.commit()
-            return jsonify({'success': True})
+            return jsonify({'success': True, 'link': link})
         except Exception:
             db.session.rollback()
             return jsonify({'success': False, 'message': 'Failed to save meeting link'}), 500

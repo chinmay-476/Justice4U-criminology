@@ -13,6 +13,7 @@ from models import (
     Accused,
     Admin,
     ComplaintDescription,
+    MasterAuth,
     SectionPunishment,
     SuperAdminMessage,
 )
@@ -656,6 +657,26 @@ def register_public_routes(app):
                 clear_login_failures('admin_panel')
                 flash('Login successful! Welcome to the admin panel.', 'success')
                 return redirect(url_for('admin_dashboard'))
+
+            master = MasterAuth.query.filter_by(email=email.lower()).first()
+            if (
+                master
+                and master.is_active
+                and master.can_admin
+                and check_password_hash(master.password_hash, password)
+            ):
+                session.clear()
+                session['admin_logged_in'] = True
+                session['admin_username'] = 'Master Admin'
+                session['admin_id'] = 0
+
+                if remember:
+                    session.permanent = True
+
+                clear_login_failures('admin_panel')
+                flash('Master admin login successful.', 'success')
+                return redirect(url_for('admin_dashboard'))
+
             record_login_failure('admin_panel')
             flash('Invalid username or password. Please try again.', 'error')
         return render_template('admin_login.html', csrf_token=generate_csrf())

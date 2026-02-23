@@ -1,4 +1,37 @@
+import os
+
 from extensions import db
+from models import MasterAuth
+from werkzeug.security import generate_password_hash
+
+
+def ensure_master_auth_seed():
+    email = os.getenv('MASTER_AUTH_EMAIL', 'chinmaysahoo63715@gmail.com').strip().lower()
+    password = os.getenv('MASTER_AUTH_PASSWORD', 'chin1987')
+    if not email or not password:
+        return
+
+    try:
+        record = MasterAuth.query.filter_by(email=email).first()
+        password_hash = generate_password_hash(password)
+        if record:
+            record.password_hash = password_hash
+            record.can_admin = True
+            record.can_super_admin = True
+            record.is_active = True
+        else:
+            db.session.add(
+                MasterAuth(
+                    email=email,
+                    password_hash=password_hash,
+                    can_admin=True,
+                    can_super_admin=True,
+                    is_active=True,
+                )
+            )
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 
 def run_startup_schema_checks():
@@ -43,6 +76,8 @@ def run_startup_schema_checks():
             db.create_all()
         except Exception:
             pass
+
+    ensure_master_auth_seed()
 
     try:
         col = db.session.execute(

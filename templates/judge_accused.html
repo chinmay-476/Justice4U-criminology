@@ -34,7 +34,7 @@
               <tr>
                 <th>#</th>
                 <th>Case No</th>
-                <th>Link</th>
+                <th>Meeting</th>
                 <th>Started</th>
                 <th>Action</th>
               </tr>
@@ -44,7 +44,16 @@
               <tr>
                 <td>{{ loop.index }}</td>
                 <td>{{ m.case_no }}</td>
-                <td><a href="{{ m.link }}" target="_blank" rel="noopener">{{ m.link }}</a></td>
+                <td>
+                  <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" class="btn btn-sm btn-primary" onclick="openVideoCall('{{ m.link }}')">
+                      <i class="fas fa-video"></i> Join Video Call
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyVideoCallLink('{{ m.link }}')">
+                      <i class="fas fa-copy"></i> Copy Link
+                    </button>
+                  </div>
+                </td>
                 <td>{{ m.created_at.strftime('%Y-%m-%d %H:%M') if m.created_at }}</td>
                 <td>
                   <form method="POST" action="{{ url_for('judge_end_meeting', meeting_id=m.id) }}" class="d-inline">
@@ -106,9 +115,16 @@
                     <td>
                       {% set m = meeting_links_by_case.get(person.case_no) %}
                       {% if m %}
-                        <a href="{{ m.link }}" target="_blank" rel="noopener" class="btn btn-sm btn-info"><i class="fas fa-video"></i> Join</a>
+                        <div class="d-flex gap-2 flex-wrap">
+                          <button type="button" class="btn btn-sm btn-info" onclick="openVideoCall('{{ m.link }}')">
+                            <i class="fas fa-video"></i> Join Video Call
+                          </button>
+                          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyVideoCallLink('{{ m.link }}')">
+                            <i class="fas fa-copy"></i> Copy Link
+                          </button>
+                        </div>
                       {% else %}
-                        <span class="text-muted">No link</span>
+                        <span class="text-muted">No active room</span>
                       {% endif %}
                     </td>
                     <td>
@@ -137,7 +153,7 @@
                         <i class="fa fa-gavel"></i> Punishment Details
                       </button>
                       <button type="button" class="btn btn-sm btn-secondary ms-1" onclick="sendVcLinkForCase('{{ person.case_no }}')">
-                        <i class="fas fa-video"></i> Send VC Link
+                        <i class="fas fa-video"></i> Create Call Room
                       </button>
                       {% else %}
                         <span class="text-muted">N/A</span>
@@ -227,6 +243,24 @@
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    function openVideoCall(link) {
+      if (!link) { alert('No active video call room.'); return; }
+      window.open(link, '_blank', 'noopener');
+    }
+
+    function copyVideoCallLink(link) {
+      if (!link) { alert('No active video call room.'); return; }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link).then(function() {
+          alert('Video call link copied.');
+        }).catch(function() {
+          window.prompt('Copy this call room link:', link);
+        });
+      } else {
+        window.prompt('Copy this call room link:', link);
+      }
+    }
+
     function showPunishmentDetails(sectionId, btnEl) {
       var modal = new bootstrap.Modal(document.getElementById('punishmentModal'));
       modal.show();
@@ -415,28 +449,30 @@
 
     function sendVcLinkForCase(caseNo) {
       if (!caseNo) { alert('Case number not found.'); return; }
-      var randomNumber = Math.floor(100000 + Math.random() * 900000);
-      var meetingLink = 'https://meet.jit.si/room' + randomNumber;
 
-      try {
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', '{{ url_for("judge_save_meeting_link") }}', true);
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        xhr.onload = function() {
-          // Update the VC link display under the form
-          var below = document.getElementById('belowFormSection');
-          if (below) {
-            below.innerHTML = '<div class="mt-3 p-3 border rounded"><strong>Video Conference Link:</strong> <a href="' + meetingLink + '" target="_blank" rel="noopener">' + meetingLink + '</a></div>' + below.innerHTML;
-          }
-        };
-        xhr.send('case_no=' + encodeURIComponent(caseNo) + '&link=' + encodeURIComponent(meetingLink) + '&csrf_token={{ csrf_token }}');
-      } catch (e) {}
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '{{ url_for("judge_save_meeting_link") }}', true);
+      xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+      xhr.onload = function() {
+        var response = {};
+        try { response = JSON.parse(xhr.responseText || '{}'); } catch (e) {}
+        if (!response.success || !response.link) {
+          alert(response.message || 'Failed to create call room.');
+          return;
+        }
 
-      if (navigator.share) {
-        navigator.share({ title: 'Jitsi Meeting', text: 'VC Link for case ' + caseNo + ': ' + meetingLink, url: meetingLink }).catch(function(){});
-      } else {
-        window.prompt('Copy this link to share:', meetingLink);
-      }
+        var meetingLink = response.link;
+        var below = document.getElementById('belowFormSection');
+        if (below) {
+          below.innerHTML = '<div class="mt-3 p-3 border rounded"><strong>Video Call Room:</strong> '
+            + '<button type="button" class="btn btn-sm btn-primary ms-2" onclick="openVideoCall(\'' + meetingLink + '\')"><i class="fas fa-video"></i> Join Video Call</button> '
+            + '<button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="copyVideoCallLink(\'' + meetingLink + '\')"><i class="fas fa-copy"></i> Copy Link</button>'
+            + '<div class="small text-muted mt-2">' + meetingLink + '</div></div>' + below.innerHTML;
+        }
+
+        copyVideoCallLink(meetingLink);
+      };
+      xhr.send('case_no=' + encodeURIComponent(caseNo) + '&csrf_token={{ csrf_token }}');
     }
 
     // Submit behavior: only submits the form (no link generation here)

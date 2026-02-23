@@ -55,9 +55,16 @@
                 <td>
                   {% set meeting = meeting_links_by_case.get(person.case_no) %}
                   {% if meeting %}
-                    <a href="{{ meeting.link }}" target="_blank" rel="noopener" class="btn btn-sm btn-info"><i class="fas fa-video"></i> Join</a>
+                    <div class="d-flex gap-2 flex-wrap">
+                      <button type="button" class="btn btn-sm btn-info" onclick="openVideoCall('{{ meeting.link }}')">
+                        <i class="fas fa-video"></i> Join Video Call
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyVideoCallLink('{{ meeting.link }}')">
+                        <i class="fas fa-copy"></i> Copy Link
+                      </button>
+                    </div>
                   {% else %}
-                    <span class="text-muted">No link</span>
+                    <span class="text-muted">No active room</span>
                   {% endif %}
                 </td>
                 <td>
@@ -110,6 +117,24 @@
   </div>
 
   <script>
+    function openVideoCall(link) {
+      if (!link) { alert('No active video call room.'); return; }
+      window.open(link, '_blank', 'noopener');
+    }
+
+    function copyVideoCallLink(link) {
+      if (!link) { alert('No active video call room.'); return; }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link).then(function() {
+          alert('Video call link copied.');
+        }).catch(function() {
+          window.prompt('Copy this call room link:', link);
+        });
+      } else {
+        window.prompt('Copy this call room link:', link);
+      }
+    }
+
     function showPunishmentFromList(sections, username, relative_name, dob, gender, mobile, email, occupation, nationality, permanent_address, pincode, aadhaar_no, case_no, fir_no, ps, remand_custody, medical_report, confession_statement, accused_photo) {
       var modalEl = document.getElementById('punishmentModalPending');
       var modal = new bootstrap.Modal(modalEl);

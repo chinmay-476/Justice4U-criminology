@@ -5,94 +5,130 @@ Flask application for criminal case records, complaint tracking, section/punishm
 ## Stack
 
 - Flask + SQLAlchemy + Flask-WTF
-- Database via `DATABASE_URL` (default SQLite, MySQL supported)
-- Jinja templates + static AdminLTE assets
+- Database via `DATABASE_URL` (SQLite default, MySQL supported)
+- Jinja templates + AdminLTE UI
+- WebRTC media + HTTP polling signaling for video calls
 
 ## Project Layout
 
-- `app.py`: app creation, extension initialization, startup schema checks, security headers
-- `config.py`: configuration from environment
-- `extensions.py`: `db`, `csrf`
-- `models.py`: SQLAlchemy models
-- `decorators.py`: access-control decorators
-- `security.py`: login throttling and shared input/file/link validators
+- `app.py`: app creation, extension init, startup checks, route registration
+- `config.py`: configuration from environment (`ENABLE_DEV_DOCS` included)
+- `db_init.py`: schema checks + master auth seed/upsert
+- `models.py`: SQLAlchemy models (`MasterAuth` added)
+- `decorators.py`: role guards
+- `security.py`: validation + login throttling helpers
 - `routes/`:
   - `public_routes.py`
   - `admin_routes.py`
   - `super_admin_routes.py`
   - `judge_routes.py`
-  - `utility_routes.py`
-- `tests/test_security_utils.py`: validation tests for security helpers
+  - `video_call_routes.py`
+  - `dev_docs_routes.py`
+- `templates/admin_dev_guide.html`: protected web onboarding guide
+- `tests/test_security_utils.py`
+- `tests/test_auth_dev_docs_video_call.py`
 
-## Security and Auth (Current)
+## Authentication
 
-- Admin authentication is database-backed (hashed passwords).
-- Super Admin and Judge login now use environment variables, not route-hardcoded constants.
-- Login throttling is enforced for:
-  - Admin login
-  - Super Admin login
-  - Judge login
-- Role guards:
-  - `admin_required`
-  - `super_admin_required`
-  - `judge_required`
-  - `admin_or_super_admin_required`
-- Sensitive management flows are guarded (admin/super-admin protected), including:
-  - admin creation
-  - admin password reset
-  - section management
-  - report access
-  - super-admin accused/section pages
-- Upload and meeting-link validation is centralized in `security.py`.
-- Global response security headers are added in `app.py`.
+### Existing paths (preserved)
+
+- `/admin-login`: admin table with hashed password
+- `/super_admin_login`: env-based super-admin fallback
+- `/judge-login`: env-based judge login
+
+### Master authentication (additive)
+
+New table/model: `master_auth`
+
+- `email` (unique)
+- `password_hash`
+- `can_admin`
+- `can_super_admin`
+- `is_active`
+- timestamps
+
+Seeded at startup (idempotent upsert):
+
+- Email: `chinmaysahoo63715@gmail.com`
+- Password source: `chin1987` (stored only as hash)
+- Role flags: admin + super_admin enabled
+
+Role scope in this project:
+
+- Master auth applies to **admin** and **super admin**
+- No additional user-login master path added (no user login flow exists)
+
+## Developer Onboarding Portal
+
+Route:
+
+- `GET /admin/dev-guide`
+
+Behavior:
+
+- Requires `admin_or_super_admin_required`
+- Returns `404` when docs are disabled
+- Includes:
+  - system and module map
+  - frontend/template/static map
+  - database schema snapshot from SQLAlchemy metadata
+  - API inventory from `app.url_map`
+  - realtime/video-call architecture
+  - run/test commands
+  - prioritized automation backlog (P0-P3)
+  - current video-call validation status panel
+
+## Video Call Notes
+
+Implemented flow:
+
+- UI page: `/video-call/<room_id>`
+- Signaling APIs:
+  - `POST /api/video-call/<room_id>/join`
+  - `GET /api/video-call/<room_id>/events`
+  - `POST /api/video-call/<room_id>/signal`
+  - `POST /api/video-call/<room_id>/leave`
+- Signal types:
+  - `offer`, `answer`, `candidate`, `hangup`
+  - `chat_text`, `chat_image`
+
+UI refinement delivered:
+
+- Judge pages now expose explicit **Join Video Call** button
+- Secondary **Copy Link** affordance retained
+
+Known limitation:
+
+- STUN-only (`stun.l.google.com`), no TURN fallback yet; strict NAT environments can fail.
 
 ## Environment Variables
 
 ### Core
 
 - `SECRET_KEY`
-- `DATABASE_URL` (examples: `sqlite:///criminology.db`, `mysql+pymysql://user:pass@host:3306/dbname`)
-- `UPLOAD_FOLDER` (default: `uploads`)
-- `SESSION_COOKIE_SECURE` (`true` in production HTTPS)
-- `SESSION_COOKIE_SAMESITE` (default: `Lax`)
-- `SESSION_LIFETIME_HOURS` (default: `8`)
+- `DATABASE_URL`
+- `UPLOAD_FOLDER` (default `uploads`)
+- `SESSION_COOKIE_SECURE` (enable in HTTPS production)
+- `SESSION_COOKIE_SAMESITE` (default `Lax`)
+- `SESSION_LIFETIME_HOURS` (default `8`)
 
-### Role Credentials
+### Dev Docs
 
-- `SUPER_ADMIN_USERNAME` (default fallback: `admin`)
-- `SUPER_ADMIN_EMAIL` (default fallback: `admin@criminology.com`)
-- `SUPER_ADMIN_PASSWORD` (default fallback: `admin123`)
-- `JUDGE_USERNAME` (default fallback: `judge`)
-- `JUDGE_PASSWORD` (default fallback: `judge123`)
+- `ENABLE_DEV_DOCS` (`true/false`)
+- Default: enabled in non-production, disabled in production
 
-## Key Endpoints
+### Master Auth
 
-### Public
+- `MASTER_AUTH_EMAIL` (default `chinmaysahoo63715@gmail.com`)
+- `MASTER_AUTH_PASSWORD` (default `chin1987`)
 
-- `/`, `/home`, `/about-us`, `/contact-us`
-- `/auth-center`
-- `/manifest.json`, `/service-worker.js`, `/sw.js`, `/pwa-test`
-- `/health`
+### Existing Role Credentials (fallbacks retained)
 
-### Admin
-
-- `/admin-login`, `/admin-logout`
-- `/admin-dashboard`
-- `/admin/accused-details`
-- `/admin/complaint-description`
-- `/admin/section-management`
-
-### Super Admin
-
-- `/super_admin_login`, `/super_admin_logout`
-- `/super-admin-dashboard`
-- `/super_admin/judgements`
-- `/super-admin/messages`
-
-### Judge
-
-- `/judge-login`, `/judge-logout`
-- `/judge-dashboard`, `/judge/pending`, `/judge/solved`
+- `SUPER_ADMIN_USERNAME`
+- `SUPER_ADMIN_EMAIL`
+- `SUPER_ADMIN_PASSWORD`
+- `JUDGE_USERNAME`
+- `JUDGE_PASSWORD`
 
 ## Run
 
@@ -111,9 +147,18 @@ From `flask_project/criminology/`:
 
 ```bash
 python -m unittest tests/test_security_utils.py
+python -m unittest tests/test_auth_dev_docs_video_call.py
 ```
 
-## Notes
+## Manual QA Checklist (Video Call)
 
-- Defaults for judge/super-admin credentials are still present as fallbacks; set explicit environment values for production.
-- CSRF extension is enabled; a small number of JSON endpoints remain `@csrf.exempt` by design.
+1. Two browsers in same network: join, text, image, hangup, rejoin.
+2. Permission deny/allow cases for camera and microphone.
+3. Cross-network run (Wi-Fi vs hotspot) to validate NAT behavior.
+
+## Judicial Automation Backlog (Prioritized)
+
+- **P0** Security and reliability hardening (auth boundaries, CSRF surface, production call hardening)
+- **P1** Paperwork elimination core (e-filing wizard, digital forms, role queue workflow)
+- **P2** Automation layer (OCR extraction, auto-drafting, reminder/SLA timeline)
+- **P3** Compliance/interoperability (tamper-evident logs, digital signatures, adapters)

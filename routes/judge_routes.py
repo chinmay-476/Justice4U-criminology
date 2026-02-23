@@ -1,5 +1,6 @@
 import hmac
 import os
+import secrets
 from datetime import datetime
 
 from flask import flash, jsonify, redirect, render_template, request, session, url_for
@@ -12,7 +13,6 @@ from security import (
     check_login_block,
     clear_login_failures,
     is_valid_case_no,
-    is_valid_meeting_link,
     record_login_failure,
 )
 
@@ -21,6 +21,7 @@ from security import (
 def register_judge_routes(app):
     @app.route('/get_meeting_link', methods=['POST'])
     @csrf.exempt
+    @judge_required
     def get_meeting_link():
         case_no = request.form.get('case_no', '').strip()
         if not is_valid_case_no(case_no):
@@ -207,11 +208,12 @@ def register_judge_routes(app):
     @judge_required
     def judge_save_meeting_link():
         case_no = request.form.get('case_no', '').strip()
-        link = request.form.get('link', '').strip()
         if not is_valid_case_no(case_no):
             return jsonify({'success': False, 'message': 'Invalid case number'}), 400
-        if not is_valid_meeting_link(link):
-            return jsonify({'success': False, 'message': 'Invalid meeting link'}), 400
+
+        room_suffix = secrets.token_urlsafe(6).replace('-', '').replace('_', '')
+        room_id = f"{case_no.replace('/', '-').replace(' ', '')}-{room_suffix}"
+        link = url_for('video_call_room', room_id=room_id, _external=True)
 
         existing = MeetingLink.query.filter_by(case_no=case_no, status='Ongoing').all()
         for meeting in existing:
@@ -228,7 +230,7 @@ def register_judge_routes(app):
         try:
             db.session.add(new_meeting)
             db.session.commit()
-            return jsonify({'success': True})
+            return jsonify({'success': True, 'link': link})
         except Exception:
             db.session.rollback()
             return jsonify({'success': False, 'message': 'Failed to save meeting link'}), 500
