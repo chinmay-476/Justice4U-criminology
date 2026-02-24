@@ -49,6 +49,7 @@
     <td>{{ person.email_id }}</td>
     <td>{{ person.occupation }}</td>
     <td>
+      {% set meeting_link = meeting_links_by_case.get((person.case_no or '')|trim|lower) if meeting_links_by_case is defined else '' %}
       <!-- Details button -->
       <button type="button" class="btn btn-sm btn-secondary"
               data-username="{{ person.username }}"
@@ -67,7 +68,8 @@
               data-ps="{{ person.ps }}"
               data-bail-status="{{ person.bail_status }}"
               data-remand-custody="{{ person.remand_custody }}"
-              data-medical-report="{{ person.medical_report }}"
+              data-medical-report="{{ person.medical_report_pdf }}"
+              data-meeting-link="{{ meeting_link or '' }}"
               data-sections="{{ person.sections }}"
               data-confession-statement="{{ person.confession_statement }}"
               data-accused-photo="{{ person.accused_photo }}"
@@ -96,7 +98,8 @@
               data-ps="{{ person.ps }}"
               data-bail-status="{{ person.bail_status }}"
               data-remand-custody="{{ person.remand_custody }}"
-              data-medical-report="{{ person.medical_report }}"
+              data-medical-report="{{ person.medical_report_pdf }}"
+              data-meeting-link="{{ meeting_link or '' }}"
               data-sections="{{ person.sections }}"
               data-confession-statement="{{ person.confession_statement }}"
               data-accused-photo="{{ person.accused_photo }}"
@@ -204,6 +207,43 @@
     }
   });
 
+  function getSafeVideoCallLink(link) {
+    if (!link) return null;
+    try {
+      var parsed = new URL(link, window.location.origin);
+      if (!parsed.pathname.startsWith('/video-call/')) return null;
+      return parsed.toString();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function openVideoCall(link) {
+    var safeLink = getSafeVideoCallLink(link);
+    if (!safeLink) {
+      alert('No active internal video call room.');
+      return;
+    }
+    window.open(safeLink, '_blank', 'noopener');
+  }
+
+  function copyVideoCallLink(link) {
+    var safeLink = getSafeVideoCallLink(link);
+    if (!safeLink) {
+      alert('No active internal video call room.');
+      return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(safeLink).then(function() {
+        alert('Video call link copied.');
+      }).catch(function() {
+        window.prompt('Copy this call room link:', safeLink);
+      });
+    } else {
+      window.prompt('Copy this call room link:', safeLink);
+    }
+  }
+
   function showPunishmentDetails(sectionId, btnEl) {
     // Show the modal
     $('#punishmentModal').modal('show');
@@ -228,6 +268,8 @@
       occupation: btnEl.getAttribute('data-occupation') || '',
       nationality: btnEl.getAttribute('data-nationality') || '',
       permanent_address: btnEl.getAttribute('data-permanent-address') || '',
+      pincode: btnEl.getAttribute('data-pincode') || '',
+      aadhaar_no: btnEl.getAttribute('data-aadhaar') || '',
       case_no: btnEl.getAttribute('data-case-no') || '',
       fir_no: btnEl.getAttribute('data-fir-no') || '',
       ps: btnEl.getAttribute('data-ps') || '',
@@ -406,10 +448,16 @@
       bail_status: btnEl.getAttribute('data-bail-status') || '',
       remand_custody: btnEl.getAttribute('data-remand-custody') || '',
       medical_report: btnEl.getAttribute('data-medical-report') || '',
+      meeting_link: btnEl.getAttribute('data-meeting-link') || '',
       sections: btnEl.getAttribute('data-sections') || '',
       confession_statement: btnEl.getAttribute('data-confession-statement') || '',
       accused_photo: btnEl.getAttribute('data-accused-photo') || ''
     };
+
+    const safeMeetingLink = getSafeVideoCallLink(accused.meeting_link);
+    const meetingHtml = safeMeetingLink
+      ? `<button type="button" class="btn btn-sm btn-primary me-2" onclick='openVideoCall(${JSON.stringify(safeMeetingLink)})'><i class="fas fa-video"></i> Join Video Call</button><button type="button" class="btn btn-sm btn-outline-secondary" onclick='copyVideoCallLink(${JSON.stringify(safeMeetingLink)})'><i class="fas fa-copy"></i> Copy Link</button><div class="small text-muted mt-1">${safeMeetingLink}</div>`
+      : `<span class="text-muted">No active call room</span>`;
 
     const html = `
       <div class="p-2">
@@ -425,6 +473,7 @@
             <div class="row"><div class="col-md-6"><strong>Police Station:</strong> ${valueOrNA(accused.ps)}</div><div class="col-md-6"><strong>Bail Status:</strong> ${valueOrNA(accused.bail_status)}</div></div>
             <div class="row"><div class="col-md-12"><strong>Remand Custody:</strong> ${valueOrNA(accused.remand_custody)}</div></div>
             <div class="row"><div class="col-md-12"><strong>Medical Report:</strong> ${valueOrNA(accused.medical_report)}</div></div>
+            <div class="row"><div class="col-md-12"><strong>Meeting:</strong> ${meetingHtml}</div></div>
             <div class="row"><div class="col-md-12"><strong>Sections:</strong> ${valueOrNA(accused.sections)}</div></div>
             <div class="row"><div class="col-md-12"><strong>Statement:</strong> ${valueOrNA(accused.confession_statement)}</div></div>
           </div>

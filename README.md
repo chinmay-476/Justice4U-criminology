@@ -5,7 +5,7 @@ Flask application for criminal case records, complaint tracking, section/punishm
 ## Stack
 
 - Flask + SQLAlchemy + Flask-WTF
-- Database via `DATABASE_URL` (SQLite default, MySQL supported)
+- Database via `DATABASE_URL` (MySQL default, SQLite optional)
 - Jinja templates + AdminLTE UI
 - WebRTC media + HTTP polling signaling for video calls
 
@@ -91,15 +91,20 @@ Implemented flow:
 - Signal types:
   - `offer`, `answer`, `candidate`, `hangup`
   - `chat_text`, `chat_image`
+- Startup auto-normalizes legacy third-party meeting URLs in ongoing records to in-app `/video-call/<room_id>` links.
 
 UI refinement delivered:
 
 - Judge pages now expose explicit **Join Video Call** button
+- Judge accused table now has per-case **Join/Start Call** controls, so judge can join/create room directly for each accused row
 - Secondary **Copy Link** affordance retained
+- Judge video-call JSON endpoints now return explicit `401` JSON when judge session expires (instead of HTML redirect), improving in-page error handling.
+- Admin/Super-Admin accused details modal now shows meeting actions (Join/Copy) when an active room exists for that case.
 
 Known limitation:
 
 - STUN-only (`stun.l.google.com`), no TURN fallback yet; strict NAT environments can fail.
+- Single-device testing can be done with two browser windows/profiles (normal + incognito) joining the same room.
 
 ## Environment Variables
 

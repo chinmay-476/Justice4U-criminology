@@ -8,13 +8,33 @@ from extensions import db
 from models import Accused, ComplaintDescription, JudgeDecision, MeetingLink, SectionPunishment, SuperAdminMessage
 
 
+def _ongoing_meeting_links_by_case():
+    meetings = (
+        MeetingLink.query.filter_by(status='Ongoing')
+        .order_by(MeetingLink.created_at.desc(), MeetingLink.id.desc())
+        .all()
+    )
+    links = {}
+    for meeting in meetings:
+        case_key = (meeting.case_no or '').strip().lower()
+        link = (meeting.link or '').strip()
+        if case_key and case_key not in links and '/video-call/' in link:
+            links[case_key] = link
+    return links
+
+
 
 def register_admin_routes(app):
     @app.route('/admin/accused-details')
     @admin_required
     def admin_accused_details():
         accused_list = Accused.query.all()
-        return render_template('user_details.html', accused=accused_list, csrf_token=generate_csrf())
+        return render_template(
+            'user_details.html',
+            accused=accused_list,
+            meeting_links_by_case=_ongoing_meeting_links_by_case(),
+            csrf_token=generate_csrf(),
+        )
 
     @app.route('/admin/accused/delete/<int:accused_id>', methods=['POST'])
     @admin_required

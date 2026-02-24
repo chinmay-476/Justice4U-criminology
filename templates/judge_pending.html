@@ -53,7 +53,7 @@
                 <td>{{ person.case_no }}</td>
                 <td>{{ person.sections }}</td>
                 <td>
-                  {% set meeting = meeting_links_by_case.get(person.case_no) %}
+                  {% set meeting = meeting_links_by_case.get((person.case_no or '')|trim|lower) %}
                   {% if meeting %}
                     <div class="d-flex gap-2 flex-wrap">
                       <button type="button" class="btn btn-sm btn-info" onclick="openVideoCall('{{ meeting.link }}')">
@@ -69,7 +69,7 @@
                 </td>
                 <td>
                   <button type="button" class="btn btn-sm btn-info"
-                          onclick="showPunishmentFromList('{{ person.sections }}', '{{ person.username }}', '{{ person.relative_name }}', '{{ person.dob }}', '{{ person.gender }}', '{{ person.mobile }}', '{{ person.email_id }}', '{{ person.occupation }}', '{{ person.nationality }}', '{{ person.permanent_address }}', '{{ person.pincode }}', '{{ person.aadhaar_no }}', '{{ person.case_no }}', '{{ person.fir_no }}', '{{ person.ps }}', '{{ person.remand_custody }}', '{{ person.medical_report }}', '{{ person.confession_statement }}', '{{ person.accused_photo }}')">
+                          onclick="showPunishmentFromList('{{ person.sections }}', '{{ person.username }}', '{{ person.relative_name }}', '{{ person.dob }}', '{{ person.gender }}', '{{ person.mobile }}', '{{ person.email_id }}', '{{ person.occupation }}', '{{ person.nationality }}', '{{ person.permanent_address }}', '{{ person.pincode }}', '{{ person.aadhaar_no }}', '{{ person.case_no }}', '{{ person.fir_no }}', '{{ person.ps }}', '{{ person.remand_custody }}', '{{ person.medical_report_pdf }}', '{{ person.confession_statement }}', '{{ person.accused_photo }}')">
                     <i class="fa fa-gavel"></i> Punishment Details
                   </button>
                   <form method="POST" action="{{ url_for('judge_mark_solved') }}" class="d-inline">
@@ -117,21 +117,34 @@
   </div>
 
   <script>
+    function getSafeVideoCallLink(link) {
+      if (!link) return null;
+      try {
+        var parsed = new URL(link, window.location.origin);
+        if (!parsed.pathname.startsWith('/video-call/')) return null;
+        return parsed.toString();
+      } catch (e) {
+        return null;
+      }
+    }
+
     function openVideoCall(link) {
-      if (!link) { alert('No active video call room.'); return; }
-      window.open(link, '_blank', 'noopener');
+      var safeLink = getSafeVideoCallLink(link);
+      if (!safeLink) { alert('Invalid or expired video call room. Please create a new call room.'); return; }
+      window.open(safeLink, '_blank', 'noopener');
     }
 
     function copyVideoCallLink(link) {
-      if (!link) { alert('No active video call room.'); return; }
+      var safeLink = getSafeVideoCallLink(link);
+      if (!safeLink) { alert('Invalid or expired video call room. Please create a new call room.'); return; }
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(link).then(function() {
+        navigator.clipboard.writeText(safeLink).then(function() {
           alert('Video call link copied.');
         }).catch(function() {
-          window.prompt('Copy this call room link:', link);
+          window.prompt('Copy this call room link:', safeLink);
         });
       } else {
-        window.prompt('Copy this call room link:', link);
+        window.prompt('Copy this call room link:', safeLink);
       }
     }
 

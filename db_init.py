@@ -1,7 +1,9 @@
 import os
+import re
+from datetime import datetime
 
 from extensions import db
-from models import MasterAuth
+from models import Accused, JudgeDecision, MasterAuth, MeetingLink
 from werkzeug.security import generate_password_hash
 
 
@@ -30,6 +32,103 @@ def ensure_master_auth_seed():
                 )
             )
         db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
+def _is_internal_video_link(link):
+    return bool(link and '/video-call/' in str(link))
+
+
+def _case_key(case_no):
+    return (case_no or '').strip().lower()
+
+
+def _safe_case_fragment(case_no):
+    cleaned = re.sub(r'[^A-Za-z0-9]+', '-', (case_no or '').strip()).strip('-')
+    return cleaned[:48] or 'case'
+
+
+def repair_database_records():
+    """
+    Perform safe, idempotent record repairs for existing data:
+    - Normalize legacy third-party meeting links to internal /video-call rooms.
+    - Enforce one ongoing meeting per case number.
+    - Normalize meeting status/ended_at consistency.
+    - Normalize judge decision status values.
+    """
+    try:
+        changed = False
+        now = datetime.utcnow()
+        valid_case_keys = {
+            _case_key(row.case_no)
+            for row in Accused.query.with_entities(Accused.case_no).all()
+            if _case_key(row.case_no)
+        }
+
+        meetings = MeetingLink.query.order_by(MeetingLink.created_at.desc(), MeetingLink.id.desc()).all()
+        seen_ongoing = set()
+
+        for meeting in meetings:
+            if meeting.case_no and meeting.case_no != meeting.case_no.strip():
+                meeting.case_no = meeting.case_no.strip()
+                changed = True
+
+            status = (meeting.status or '').strip().title()
+            if status not in {'Ongoing', 'Ended'}:
+                status = 'Ended' if meeting.ended_at else 'Ongoing'
+                meeting.status = status
+                changed = True
+
+            case_key = _case_key(meeting.case_no)
+            if meeting.status == 'Ongoing':
+                if not case_key or (valid_case_keys and case_key not in valid_case_keys):
+                    meeting.status = 'Ended'
+                    meeting.ended_at = meeting.ended_at or now
+                    changed = True
+                    continue
+
+                if case_key in seen_ongoing:
+                    meeting.status = 'Ended'
+                    meeting.ended_at = meeting.ended_at or now
+                    changed = True
+                    continue
+
+                seen_ongoing.add(case_key)
+
+                if meeting.ended_at is not None:
+                    meeting.ended_at = None
+                    changed = True
+
+                if not _is_internal_video_link(meeting.link):
+                    room_id = f"{_safe_case_fragment(meeting.case_no)}-legacy-{meeting.id}"
+                    meeting.link = f"/video-call/{room_id}"
+                    changed = True
+            else:
+                if meeting.ended_at is None:
+                    meeting.ended_at = now
+                    changed = True
+
+            if meeting.link:
+                normalized_link = str(meeting.link).strip()
+                if normalized_link != meeting.link:
+                    meeting.link = normalized_link
+                    changed = True
+
+        decisions = JudgeDecision.query.all()
+        for decision in decisions:
+            if decision.case_no and decision.case_no != decision.case_no.strip():
+                decision.case_no = decision.case_no.strip()
+                changed = True
+            normalized_status = (decision.status or '').strip().title()
+            if normalized_status not in {'Pending', 'Solved'}:
+                normalized_status = 'Pending'
+            if decision.status != normalized_status:
+                decision.status = normalized_status
+                changed = True
+
+        if changed:
+            db.session.commit()
     except Exception:
         db.session.rollback()
 
@@ -116,3 +215,5 @@ def run_startup_schema_checks():
             db.create_all()
         except Exception:
             pass
+
+    repair_database_records()

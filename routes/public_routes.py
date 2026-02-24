@@ -14,6 +14,7 @@ from models import (
     Admin,
     ComplaintDescription,
     MasterAuth,
+    MeetingLink,
     SectionPunishment,
     SuperAdminMessage,
 )
@@ -68,7 +69,23 @@ def register_public_routes(app):
     @admin_required
     def user_details():
         accused_list = Accused.query.all()
-        return render_template('user_details.html', accused=accused_list)
+        meetings = (
+            MeetingLink.query.filter_by(status='Ongoing')
+            .order_by(MeetingLink.created_at.desc(), MeetingLink.id.desc())
+            .all()
+        )
+        meeting_links_by_case = {}
+        for meeting in meetings:
+            case_key = (meeting.case_no or '').strip().lower()
+            link = (meeting.link or '').strip()
+            if case_key and case_key not in meeting_links_by_case and '/video-call/' in link:
+                meeting_links_by_case[case_key] = link
+        return render_template(
+            'user_details.html',
+            accused=accused_list,
+            meeting_links_by_case=meeting_links_by_case,
+            csrf_token=generate_csrf(),
+        )
 
     @app.route('/add_user')
     @admin_required

@@ -95,7 +95,7 @@
                 <th>Sections</th>
                 <th>Date of Arrest</th>
                 <th>Place of Arrest</th>
-                <th>Video Meet</th>
+                <th>Video Call</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -112,19 +112,22 @@
                     <td>{{ person.sections }}</td>
                     <td>{{ person.date_of_arrest }}</td>
                     <td>{{ person.place_of_arrest }}</td>
-                    <td>
-                      {% set m = meeting_links_by_case.get(person.case_no) %}
-                      {% if m %}
-                        <div class="d-flex gap-2 flex-wrap">
-                          <button type="button" class="btn btn-sm btn-info" onclick="openVideoCall('{{ m.link }}')">
-                            <i class="fas fa-video"></i> Join Video Call
-                          </button>
+                    <td data-video-cell-case="{{ person.case_no }}">
+                      {% set m = meeting_links_by_case.get((person.case_no or '')|trim|lower) %}
+                      <div class="d-flex gap-2 flex-wrap align-items-center">
+                        <button type="button" class="btn btn-sm btn-primary" onclick='joinOrCreateVideoCall({{ (person.case_no or "")|tojson }})'>
+                          <i class="fas fa-video"></i> Join/Start Call
+                        </button>
+                        {% if m %}
                           <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyVideoCallLink('{{ m.link }}')">
                             <i class="fas fa-copy"></i> Copy Link
                           </button>
-                        </div>
+                        {% endif %}
+                      </div>
+                      {% if m %}
+                        <div class="small text-muted mt-1">{{ m.link }}</div>
                       {% else %}
-                        <span class="text-muted">No active room</span>
+                        <div class="small text-muted mt-1">No active room. Click Join/Start Call.</div>
                       {% endif %}
                     </td>
                     <td>
@@ -145,15 +148,12 @@
                               data-fir-no="{{ person.fir_no }}"
                               data-ps="{{ person.ps }}"
                               data-remand-custody="{{ person.remand_custody }}"
-                              data-medical-report="{{ person.medical_report }}"
+                              data-medical-report="{{ person.medical_report_pdf }}"
                               data-sections="{{ person.sections }}"
                               data-confession-statement="{{ person.confession_statement }}"
                               data-accused-photo="{{ person.accused_photo }}"
                               onclick="showPunishmentDetails('{{ person.sections }}', this)">
                         <i class="fa fa-gavel"></i> Punishment Details
-                      </button>
-                      <button type="button" class="btn btn-sm btn-secondary ms-1" onclick="sendVcLinkForCase('{{ person.case_no }}')">
-                        <i class="fas fa-video"></i> Create Call Room
                       </button>
                       {% else %}
                         <span class="text-muted">N/A</span>
@@ -243,21 +243,128 @@
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    function getSafeVideoCallLink(link) {
+      if (!link) return null;
+      try {
+        var parsed = new URL(link, window.location.origin);
+        if (!parsed.pathname.startsWith('/video-call/')) return null;
+        return parsed.toString();
+      } catch (e) {
+        return null;
+      }
+    }
+
     function openVideoCall(link) {
-      if (!link) { alert('No active video call room.'); return; }
-      window.open(link, '_blank', 'noopener');
+      var safeLink = getSafeVideoCallLink(link);
+      if (!safeLink) { alert('Invalid or expired video call room. Please create a new call room.'); return; }
+      window.open(safeLink, '_blank', 'noopener');
     }
 
     function copyVideoCallLink(link) {
-      if (!link) { alert('No active video call room.'); return; }
+      var safeLink = getSafeVideoCallLink(link);
+      if (!safeLink) { alert('Invalid or expired video call room. Please create a new call room.'); return; }
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(link).then(function() {
+        navigator.clipboard.writeText(safeLink).then(function() {
           alert('Video call link copied.');
         }).catch(function() {
-          window.prompt('Copy this call room link:', link);
+          window.prompt('Copy this call room link:', safeLink);
         });
       } else {
-        window.prompt('Copy this call room link:', link);
+        window.prompt('Copy this call room link:', safeLink);
+      }
+    }
+
+    function normalizeCaseNo(caseNo) {
+      return (caseNo || '').toString().trim().toLowerCase();
+    }
+
+    function findVideoCell(caseNo) {
+      var key = normalizeCaseNo(caseNo);
+      var cells = document.querySelectorAll('td[data-video-cell-case]');
+      for (var i = 0; i < cells.length; i += 1) {
+        if (normalizeCaseNo(cells[i].getAttribute('data-video-cell-case')) === key) {
+          return cells[i];
+        }
+      }
+      return null;
+    }
+
+    function renderVideoCell(caseNo, link) {
+      var cell = findVideoCell(caseNo);
+      var safeLink = getSafeVideoCallLink(link);
+      if (!cell || !safeLink) return;
+      cell.innerHTML =
+        '<div class="d-flex gap-2 flex-wrap align-items-center">'
+        + '<button type="button" class="btn btn-sm btn-primary" onclick=\'joinOrCreateVideoCall(' + JSON.stringify(caseNo) + ')\'><i class="fas fa-video"></i> Join/Start Call</button>'
+        + '<button type="button" class="btn btn-sm btn-outline-secondary" onclick=\'copyVideoCallLink(' + JSON.stringify(safeLink) + ')\'><i class="fas fa-copy"></i> Copy Link</button>'
+        + '</div>'
+        + '<div class="small text-muted mt-1">' + safeLink + '</div>';
+    }
+
+    function postForm(url, dataObj) {
+      var formData = new URLSearchParams();
+      Object.keys(dataObj || {}).forEach(function(key) {
+        formData.append(key, dataObj[key] || '');
+      });
+      return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        credentials: 'same-origin',
+        body: formData.toString()
+      }).then(function(resp) {
+        return resp.text().then(function(text) {
+          var payload = null;
+          try {
+            payload = JSON.parse(text);
+          } catch (e) {
+            throw new Error(resp.status === 401 ? 'Judge session expired. Please log in again.' : 'Invalid server response.');
+          }
+          if (!resp.ok) {
+            throw new Error((payload && payload.message) ? payload.message : ('Request failed with status ' + resp.status));
+          }
+          return payload;
+        });
+      });
+    }
+
+    function fetchCurrentMeetingLink(caseNo) {
+      return postForm('/get_meeting_link', { case_no: caseNo, csrf_token: '{{ csrf_token }}' });
+    }
+
+    function createMeetingLink(caseNo) {
+      return postForm('{{ url_for("judge_save_meeting_link") }}', { case_no: caseNo, csrf_token: '{{ csrf_token }}' });
+    }
+
+    async function joinOrCreateVideoCall(caseNo) {
+      if (!caseNo) {
+        alert('Case number not found.');
+        return;
+      }
+
+      try {
+        var existing = await fetchCurrentMeetingLink(caseNo);
+        var existingLink = existing && existing.success ? getSafeVideoCallLink(existing.link) : null;
+        if (existingLink) {
+          openVideoCall(existingLink);
+          return;
+        }
+
+        var created = await createMeetingLink(caseNo);
+        if (!created || !created.success || !created.link) {
+          alert((created && created.message) || 'Failed to create call room.');
+          return;
+        }
+
+        var newLink = getSafeVideoCallLink(created.link);
+        if (!newLink) {
+          alert('Call room was created but link is invalid.');
+          return;
+        }
+
+        renderVideoCell(caseNo, newLink);
+        openVideoCall(newLink);
+      } catch (error) {
+        alert(error && error.message ? error.message : 'Unable to connect to video call service. Please try again.');
       }
     }
 
@@ -447,32 +554,33 @@
       });
     }
 
-    function sendVcLinkForCase(caseNo) {
+    async function sendVcLinkForCase(caseNo) {
       if (!caseNo) { alert('Case number not found.'); return; }
-
-      var xhr = new XMLHttpRequest();
-      xhr.open('POST', '{{ url_for("judge_save_meeting_link") }}', true);
-      xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-      xhr.onload = function() {
-        var response = {};
-        try { response = JSON.parse(xhr.responseText || '{}'); } catch (e) {}
-        if (!response.success || !response.link) {
-          alert(response.message || 'Failed to create call room.');
+      try {
+        var response = await createMeetingLink(caseNo);
+        if (!response || !response.success || !response.link) {
+          alert((response && response.message) || 'Failed to create call room.');
           return;
         }
 
-        var meetingLink = response.link;
+        var meetingLink = getSafeVideoCallLink(response.link);
+        if (!meetingLink) {
+          alert('Failed to create a valid call room link.');
+          return;
+        }
+
+        renderVideoCell(caseNo, meetingLink);
+
         var below = document.getElementById('belowFormSection');
         if (below) {
           below.innerHTML = '<div class="mt-3 p-3 border rounded"><strong>Video Call Room:</strong> '
-            + '<button type="button" class="btn btn-sm btn-primary ms-2" onclick="openVideoCall(\'' + meetingLink + '\')"><i class="fas fa-video"></i> Join Video Call</button> '
-            + '<button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="copyVideoCallLink(\'' + meetingLink + '\')"><i class="fas fa-copy"></i> Copy Link</button>'
+            + '<button type="button" class="btn btn-sm btn-primary ms-2" onclick=\'openVideoCall(' + JSON.stringify(meetingLink) + ')\'><i class="fas fa-video"></i> Join Video Call</button> '
+            + '<button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick=\'copyVideoCallLink(' + JSON.stringify(meetingLink) + ')\'><i class="fas fa-copy"></i> Copy Link</button>'
             + '<div class="small text-muted mt-2">' + meetingLink + '</div></div>' + below.innerHTML;
         }
-
-        copyVideoCallLink(meetingLink);
-      };
-      xhr.send('case_no=' + encodeURIComponent(caseNo) + '&csrf_token={{ csrf_token }}');
+      } catch (error) {
+        alert(error && error.message ? error.message : 'Failed to create call room.');
+      }
     }
 
     // Submit behavior: only submits the form (no link generation here)

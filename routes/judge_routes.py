@@ -1,10 +1,12 @@
 import hmac
 import os
 import secrets
+import re
 from datetime import datetime
 
 from flask import flash, jsonify, redirect, render_template, request, session, url_for
 from flask_wtf.csrf import generate_csrf
+from sqlalchemy import func
 
 from decorators import judge_required
 from extensions import csrf, db
@@ -17,23 +19,87 @@ from security import (
 )
 
 
+def _is_internal_video_link(link):
+    return bool(link and '/video-call/' in str(link))
+
+
+def _case_key(case_no):
+    return (case_no or '').strip().lower()
+
+
+def _safe_case_fragment(case_no):
+    cleaned = re.sub(r'[^A-Za-z0-9]+', '-', (case_no or '').strip()).strip('-')
+    return cleaned[:48] or 'case'
+
+
+def _new_room_link_for_case(case_no):
+    room_suffix = secrets.token_urlsafe(6).replace('-', '').replace('_', '')
+    room_id = f"{_safe_case_fragment(case_no)}-{room_suffix}"
+    return url_for('video_call_room', room_id=room_id)
+
+
+def _ensure_internal_meeting_link(meeting):
+    if not meeting or _is_internal_video_link(meeting.link):
+        return meeting
+    meeting.link = _new_room_link_for_case(meeting.case_no)
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+    return meeting
+
+
+def _find_latest_ongoing_meeting(case_no):
+    key = _case_key(case_no)
+    if not key:
+        return None
+    meeting = (
+        MeetingLink.query.filter(MeetingLink.status == 'Ongoing')
+        .filter(func.lower(func.trim(MeetingLink.case_no)) == key)
+        .order_by(MeetingLink.created_at.desc(), MeetingLink.id.desc())
+        .first()
+    )
+    return meeting
+
+
+def _normalize_meetings_for_case_map(meetings):
+    normalized = {}
+    touched = False
+    for meeting in meetings:
+        if not _is_internal_video_link(meeting.link):
+            meeting.link = _new_room_link_for_case(meeting.case_no)
+            touched = True
+        case_key = _case_key(meeting.case_no)
+        if case_key and case_key not in normalized:
+            normalized[case_key] = meeting
+    if touched:
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+    return normalized
+
+
+def _judge_api_auth_error():
+    return jsonify({'success': False, 'message': 'Judge session expired. Please log in again.'}), 401
+
+
 
 def register_judge_routes(app):
     @app.route('/get_meeting_link', methods=['POST'])
     @csrf.exempt
-    @judge_required
     def get_meeting_link():
+        if not session.get('judge_logged_in'):
+            return _judge_api_auth_error()
+
         case_no = request.form.get('case_no', '').strip()
         if not is_valid_case_no(case_no):
             return jsonify({'success': False, 'message': 'Case number is required'})
 
-        meeting = (
-            MeetingLink.query.filter_by(case_no=case_no, status='Ongoing')
-            .order_by(MeetingLink.created_at.desc())
-            .first()
-        )
+        meeting = _find_latest_ongoing_meeting(case_no)
         if not meeting:
             return jsonify({'success': True, 'link': None})
+        meeting = _ensure_internal_meeting_link(meeting)
         return jsonify({'success': True, 'link': meeting.link})
 
     @app.route('/judge-login', methods=['GET', 'POST'])
@@ -73,14 +139,10 @@ def register_judge_routes(app):
     @app.route('/judge-dashboard')
     @judge_required
     def judge_dashboard():
-        decided_case_nos = [decision.case_no for decision in JudgeDecision.query.all()]
-        if decided_case_nos:
-            accused_list = Accused.query.filter(~Accused.case_no.in_(decided_case_nos)).all()
-        else:
-            accused_list = Accused.query.all()
+        accused_list = Accused.query.order_by(Accused.case_no.asc()).all()
 
         ongoing_meetings = MeetingLink.query.filter_by(status='Ongoing').order_by(MeetingLink.created_at.desc()).all()
-        meeting_links_by_case = {meeting.case_no: meeting for meeting in ongoing_meetings}
+        meeting_links_by_case = _normalize_meetings_for_case_map(ongoing_meetings)
 
         return render_template(
             'judge_accused.html',
@@ -101,7 +163,7 @@ def register_judge_routes(app):
         )
 
         ongoing = MeetingLink.query.filter_by(status='Ongoing').all()
-        meeting_links_by_case = {meeting.case_no: meeting for meeting in ongoing}
+        meeting_links_by_case = _normalize_meetings_for_case_map(ongoing)
 
         return render_template(
             'judge_pending.html',
@@ -186,14 +248,10 @@ def register_judge_routes(app):
             db.session.rollback()
             flash('Failed to save decision.', 'error')
 
-        decided_case_nos = [d.case_no for d in JudgeDecision.query.all()]
-        if decided_case_nos:
-            accused_list = Accused.query.filter(~Accused.case_no.in_(decided_case_nos)).all()
-        else:
-            accused_list = Accused.query.all()
+        accused_list = Accused.query.order_by(Accused.case_no.asc()).all()
 
         ongoing_meetings = MeetingLink.query.filter_by(status='Ongoing').order_by(MeetingLink.created_at.desc()).all()
-        meeting_links_by_case = {meeting.case_no: meeting for meeting in ongoing_meetings}
+        meeting_links_by_case = _normalize_meetings_for_case_map(ongoing_meetings)
 
         return render_template(
             'judge_accused.html',
@@ -205,17 +263,22 @@ def register_judge_routes(app):
 
     @app.route('/judge/save_meeting_link', methods=['POST'])
     @csrf.exempt
-    @judge_required
     def judge_save_meeting_link():
+        if not session.get('judge_logged_in'):
+            return _judge_api_auth_error()
+
         case_no = request.form.get('case_no', '').strip()
         if not is_valid_case_no(case_no):
             return jsonify({'success': False, 'message': 'Invalid case number'}), 400
 
-        room_suffix = secrets.token_urlsafe(6).replace('-', '').replace('_', '')
-        room_id = f"{case_no.replace('/', '-').replace(' ', '')}-{room_suffix}"
-        link = url_for('video_call_room', room_id=room_id, _external=True)
+        link = _new_room_link_for_case(case_no)
 
-        existing = MeetingLink.query.filter_by(case_no=case_no, status='Ongoing').all()
+        case_key = _case_key(case_no)
+        existing = (
+            MeetingLink.query.filter(MeetingLink.status == 'Ongoing')
+            .filter(func.lower(func.trim(MeetingLink.case_no)) == case_key)
+            .all()
+        )
         for meeting in existing:
             meeting.status = 'Ended'
             meeting.ended_at = datetime.now()
@@ -236,6 +299,7 @@ def register_judge_routes(app):
             return jsonify({'success': False, 'message': 'Failed to save meeting link'}), 500
 
     @app.route('/judge/end_meeting/<int:meeting_id>', methods=['POST'])
+    @csrf.exempt
     @judge_required
     def judge_end_meeting(meeting_id):
         meeting = MeetingLink.query.get(meeting_id)

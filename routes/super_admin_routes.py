@@ -29,6 +29,21 @@ from security import (
 )
 
 
+def _ongoing_meeting_links_by_case():
+    meetings = (
+        MeetingLink.query.filter_by(status='Ongoing')
+        .order_by(MeetingLink.created_at.desc(), MeetingLink.id.desc())
+        .all()
+    )
+    links = {}
+    for meeting in meetings:
+        case_key = (meeting.case_no or '').strip().lower()
+        link = (meeting.link or '').strip()
+        if case_key and case_key not in links and '/video-call/' in link:
+            links[case_key] = link
+    return links
+
+
 
 def register_super_admin_routes(app):
     @app.route('/delete_it_team/<int:admin_id>', methods=['POST'])
@@ -141,9 +156,14 @@ def register_super_admin_routes(app):
 
         room_suffix = secrets.token_urlsafe(6).replace('-', '').replace('_', '')
         room_id = f"{case_no.replace('/', '-').replace(' ', '')}-{room_suffix}"
-        link = url_for('video_call_room', room_id=room_id, _external=True)
+        link = url_for('video_call_room', room_id=room_id)
 
-        existing = MeetingLink.query.filter_by(case_no=case_no, status='Ongoing').all()
+        case_key = case_no.lower()
+        existing = (
+            MeetingLink.query.filter(MeetingLink.status == 'Ongoing')
+            .filter(func.lower(func.trim(MeetingLink.case_no)) == case_key)
+            .all()
+        )
         for meeting in existing:
             meeting.status = 'Ended'
             meeting.ended_at = datetime.now()
@@ -199,7 +219,12 @@ def register_super_admin_routes(app):
     @super_admin_required
     def super_accused():
         accused_list = Accused.query.all()
-        return render_template('super_accused.html', accused=accused_list, csrf_token=generate_csrf())
+        return render_template(
+            'super_accused.html',
+            accused=accused_list,
+            meeting_links_by_case=_ongoing_meeting_links_by_case(),
+            csrf_token=generate_csrf(),
+        )
 
     @app.route('/super_accused/delete/<int:accused_id>', methods=['POST'])
     @super_admin_required
