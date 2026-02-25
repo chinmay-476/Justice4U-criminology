@@ -4,13 +4,14 @@ import secrets
 import re
 from datetime import datetime
 
-from flask import flash, jsonify, redirect, render_template, request, session, url_for
+from flask import current_app, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_wtf.csrf import generate_csrf
 from sqlalchemy import func
 
 from decorators import judge_required
 from extensions import csrf, db
 from models import Accused, JudgeDecision, MeetingLink
+from video_signaling import extract_room_id_from_link, notify_signaling_terminate
 from security import (
     check_login_block,
     clear_login_failures,
@@ -82,6 +83,13 @@ def _normalize_meetings_for_case_map(meetings):
 
 def _judge_api_auth_error():
     return jsonify({'success': False, 'message': 'Judge session expired. Please log in again.'}), 401
+
+
+def _notify_room_terminated(link, reason='meeting_ended'):
+    room_id = extract_room_id_from_link(link)
+    if not room_id:
+        return False
+    return notify_signaling_terminate(current_app.config, room_id, reason=reason)
 
 
 
@@ -279,15 +287,20 @@ def register_judge_routes(app):
             .filter(func.lower(func.trim(MeetingLink.case_no)) == case_key)
             .all()
         )
+        ended_links = []
         for meeting in existing:
             meeting.status = 'Ended'
             meeting.ended_at = datetime.now()
+            ended_links.append(meeting.link)
 
         try:
             if existing:
                 db.session.commit()
         except Exception:
             db.session.rollback()
+
+        for ended_link in ended_links:
+            _notify_room_terminated(ended_link, reason='superseded_by_new_meeting')
 
         new_meeting = MeetingLink(case_no=case_no, link=link, status='Ongoing')
         try:
@@ -312,6 +325,7 @@ def register_judge_routes(app):
         try:
             db.session.commit()
             flash('Meeting ended successfully.', 'success')
+            _notify_room_terminated(meeting.link, reason='ended_by_judge')
         except Exception:
             db.session.rollback()
             flash('Failed to end meeting.', 'error')

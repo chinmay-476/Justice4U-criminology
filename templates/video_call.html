@@ -6,50 +6,204 @@
   <title>Justice4U Video Call</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
+    :root {
+      --page-bg-a: #f2f7ff;
+      --page-bg-b: #e6eefc;
+      --surface: #ffffff;
+      --surface-muted: #f7f9ff;
+      --line: #d9e2f2;
+      --text-main: #0f1c34;
+      --text-muted: #5a6782;
+      --brand: #1e3c72;
+      --brand-2: #2a5aa6;
+      --ok: #1f9d65;
+      --warn: #c17c00;
+      --bad: #c23d2b;
+      --idle: #7a879f;
+    }
+    .session-body {
+      min-height: 100vh;
+      background: linear-gradient(140deg, var(--page-bg-a), var(--page-bg-b));
+      color: var(--text-main);
+    }
+    .session-nav {
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+      box-shadow: 0 12px 28px rgba(20, 48, 97, 0.26);
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+    .session-nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 64px;
+    }
+    .session-brand {
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      color: #fff;
+    }
+    .room-chip {
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      color: rgba(255, 255, 255, 0.95);
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      font-size: 0.82rem;
+      padding: 0.34rem 0.7rem;
+      font-weight: 600;
+    }
+    .session-shell {
+      max-width: 1140px;
+      margin: 0 auto;
+    }
+    .session-header {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 1rem 1.15rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 10px 26px rgba(16, 34, 67, 0.07);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .header-title {
+      margin: 0;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+    .meta-chip {
+      border: 1px solid var(--line);
+      color: var(--text-muted);
+      background: var(--surface-muted);
+      border-radius: 999px;
+      font-size: 0.78rem;
+      padding: 0.32rem 0.65rem;
+      font-weight: 600;
+    }
+    .status-line {
+      width: 100%;
+      margin-top: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .status-badge {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      display: inline-block;
+      box-shadow: 0 0 0 4px rgba(122, 135, 159, 0.16);
+      background: var(--idle);
+    }
+    .status-idle { background: var(--idle); box-shadow: 0 0 0 4px rgba(122, 135, 159, 0.16); }
+    .status-ok { background: var(--ok); box-shadow: 0 0 0 4px rgba(31, 157, 101, 0.16); }
+    .status-warn { background: var(--warn); box-shadow: 0 0 0 4px rgba(193, 124, 0, 0.16); }
+    .status-bad { background: var(--bad); box-shadow: 0 0 0 4px rgba(194, 61, 43, 0.16); }
+    .session-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
     .video-grid {
       display: grid;
       gap: 1rem;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     }
     .video-card {
-      background: #111827;
-      border-radius: 0.75rem;
-      padding: 0.75rem;
+      background: #0f1e3c;
+      border-radius: 14px;
+      padding: 0.7rem;
       color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 14px 28px rgba(10, 24, 51, 0.35);
+      position: relative;
+    }
+    .video-card-header {
+      font-size: 0.82rem;
+      color: rgba(255, 255, 255, 0.88);
+      letter-spacing: 0.02em;
+      margin-bottom: 0.45rem;
+      font-weight: 700;
     }
     video {
       width: 100%;
-      height: 240px;
+      height: 260px;
       object-fit: cover;
       background: #000;
       border-radius: 0.5rem;
+      display: block;
+    }
+    .video-placeholder {
+      position: absolute;
+      inset: 44px 12px 12px 12px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background: rgba(10, 22, 45, 0.62);
+      color: rgba(255, 255, 255, 0.86);
+      font-size: 0.88rem;
+      padding: 0.6rem;
+      pointer-events: none;
+    }
+    .video-placeholder.hidden {
+      display: none;
+    }
+    .control-strip {
+      margin-top: 0.9rem;
+      margin-bottom: 1rem;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 0.75rem;
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      box-shadow: 0 8px 20px rgba(15, 30, 57, 0.06);
     }
     .chat-panel {
-      background: #fff;
-      border: 1px solid #dee2e6;
-      border-radius: 0.75rem;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
       padding: 1rem;
-      margin-top: 1rem;
+      box-shadow: 0 12px 24px rgba(12, 29, 58, 0.07);
     }
     .chat-log {
       height: 280px;
       overflow-y: auto;
-      border: 1px solid #dee2e6;
+      border: 1px solid var(--line);
       border-radius: 0.5rem;
       padding: 0.75rem;
-      background: #f8f9fa;
+      background: var(--surface-muted);
     }
     .chat-item {
       margin-bottom: 0.75rem;
     }
     .chat-meta {
       font-size: 0.8rem;
-      color: #6c757d;
+      color: var(--text-muted);
       margin-bottom: 0.25rem;
     }
     .chat-bubble {
       background: #fff;
-      border: 1px solid #dee2e6;
+      border: 1px solid var(--line);
       border-radius: 0.5rem;
       padding: 0.5rem 0.75rem;
       white-space: pre-wrap;
@@ -58,18 +212,29 @@
     .chat-image {
       max-width: 220px;
       border-radius: 0.5rem;
-      border: 1px solid #dee2e6;
+      border: 1px solid var(--line);
       background: #fff;
+    }
+    @media (max-width: 767.98px) {
+      .session-header {
+        padding: 0.9rem;
+      }
+      video {
+        height: 220px;
+      }
+      .status-line {
+        font-size: 0.85rem;
+      }
     }
   </style>
 </head>
-<body class="bg-light">
-  <nav class="navbar navbar-dark" style="background:#1e3c72;">
-    <div class="container d-flex justify-content-between">
-      <span class="navbar-brand mb-0 h1">
+<body class="session-body">
+  <nav class="session-nav">
+    <div class="container session-nav-inner">
+      <span class="session-brand">
         <i class="fas fa-video me-2"></i>Justice4U Video Call
       </span>
-      <span class="text-white-50">Room: {{ room_id }}</span>
+      <span class="room-chip">Room {{ room_id }}</span>
     </div>
   </nav>
 
@@ -79,32 +244,41 @@
         This call room is inactive or ended.
       </div>
     {% else %}
-      <div class="row mb-3">
-        <div class="col-md-8">
-          <h4 class="mb-1">Case No: {{ case_no }}</h4>
-          <div id="statusText" class="text-muted">Not connected</div>
+      <div class="session-shell">
+      <div class="session-header">
+        <div>
+          <h4 class="header-title">Case No: {{ case_no }}</h4>
+          <div class="header-meta">
+            <span class="meta-chip">Room {{ room_id }}</span>
+            <span class="meta-chip">Participants <strong id="participantsCount">1</strong></span>
+          </div>
+          <div class="status-line">
+            <span id="statusBadge" class="status-badge status-idle"></span>
+            <span id="statusText">Not connected</span>
+          </div>
         </div>
-        <div class="col-md-4 text-md-end">
+        <div class="session-actions">
           <button id="joinBtn" class="btn btn-primary">Join Call</button>
           <button id="leaveBtn" class="btn btn-danger" disabled>Leave</button>
+          <button id="copyLinkBtn" class="btn btn-outline-primary">Copy Room Link</button>
         </div>
       </div>
 
       <div class="video-grid mb-3">
         <div class="video-card">
-          <div class="mb-2">You</div>
+          <div class="video-card-header">You</div>
           <video id="localVideo" autoplay playsinline muted></video>
         </div>
         <div class="video-card">
-          <div class="mb-2">Remote</div>
+          <div class="video-card-header">Remote Participant</div>
           <video id="remoteVideo" autoplay playsinline></video>
+          <div id="remotePlaceholder" class="video-placeholder">Waiting for remote video stream...</div>
         </div>
       </div>
 
-      <div class="d-flex gap-2 flex-wrap">
+      <div class="control-strip">
         <button id="toggleMicBtn" class="btn btn-outline-secondary" disabled>Mute Mic</button>
         <button id="toggleCameraBtn" class="btn btn-outline-secondary" disabled>Stop Camera</button>
-        <button id="copyLinkBtn" class="btn btn-outline-primary">Copy Room Link</button>
       </div>
 
       <div class="chat-panel">
@@ -119,23 +293,32 @@
           <button id="sendImageBtn" class="btn btn-outline-primary" disabled>Send Image</button>
         </div>
       </div>
+      </div>
     {% endif %}
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
   {% if active %}
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script>
     const roomId = {{ room_id | tojson }};
     const roomLink = window.location.href;
+    const configuredSignalingMode = {{ signaling_mode | default('hybrid') | tojson }};
+    const defaultWsPath = {{ ws_path | default('/ws/socket.io') | tojson }};
 
+    const tokenUrl = `/api/video-call/${encodeURIComponent(roomId)}/token`;
+    const iceConfigUrl = `/api/video-call/${encodeURIComponent(roomId)}/ice-config`;
     const joinUrl = `/api/video-call/${encodeURIComponent(roomId)}/join`;
     const eventsUrl = `/api/video-call/${encodeURIComponent(roomId)}/events`;
     const signalUrl = `/api/video-call/${encodeURIComponent(roomId)}/signal`;
     const leaveUrl = `/api/video-call/${encodeURIComponent(roomId)}/leave`;
 
     const statusText = document.getElementById('statusText');
+    const statusBadge = document.getElementById('statusBadge');
+    const participantsCount = document.getElementById('participantsCount');
     const localVideo = document.getElementById('localVideo');
     const remoteVideo = document.getElementById('remoteVideo');
+    const remotePlaceholder = document.getElementById('remotePlaceholder');
     const joinBtn = document.getElementById('joinBtn');
     const leaveBtn = document.getElementById('leaveBtn');
     const toggleMicBtn = document.getElementById('toggleMicBtn');
@@ -154,13 +337,67 @@
     let pollTimer = null;
     let lastEventId = 0;
     let offerSent = false;
+    let pendingRemoteCandidates = [];
+    let hasRemoteTrack = false;
+    let signalingTransport = null;
+    let wsSocket = null;
 
-    const rtcConfig = {
+    let rtcConfig = {
       iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }]
     };
 
-    function setStatus(message) {
+    function socketClientAvailable() {
+      return typeof window.io === 'function';
+    }
+
+    function normalizeWsPath(path) {
+      const value = String(path || '').trim() || '/ws/socket.io';
+      return value.startsWith('/') ? value : `/${value}`;
+    }
+
+    function setRtcIceServers(iceServers) {
+      if (Array.isArray(iceServers) && iceServers.length > 0) {
+        rtcConfig = { iceServers };
+      }
+    }
+
+    async function loadIceConfig() {
+      try {
+        const response = await fetch(iceConfigUrl);
+        if (!response.ok) return false;
+        const data = await response.json();
+        if (!data.success) return false;
+        setRtcIceServers(data.ice_servers);
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }
+
+    function setStatus(message, level = 'idle') {
       statusText.textContent = message;
+      if (!statusBadge) return;
+      statusBadge.classList.remove('status-idle', 'status-ok', 'status-warn', 'status-bad');
+      const safeLevel = ['idle', 'ok', 'warn', 'bad'].includes(level) ? level : 'idle';
+      statusBadge.classList.add(`status-${safeLevel}`);
+    }
+
+    function setParticipantCount(count) {
+      if (!participantsCount) return;
+      const safeCount = Number.isFinite(Number(count)) ? Math.max(0, Number(count)) : 0;
+      participantsCount.textContent = String(safeCount);
+    }
+
+    function setRemotePlaceholderVisible(visible, message) {
+      if (!remotePlaceholder) return;
+      if (message) {
+        remotePlaceholder.textContent = message;
+      }
+      if (visible) {
+        remotePlaceholder.classList.remove('hidden');
+      } else {
+        remotePlaceholder.classList.add('hidden');
+      }
     }
 
     function appendChatMessage(kind, payload, senderLabel) {
@@ -169,7 +406,7 @@
 
       const meta = document.createElement('div');
       meta.className = 'chat-meta';
-      meta.textContent = `${senderLabel} • ${new Date().toLocaleTimeString()}`;
+      meta.textContent = `${senderLabel} - ${new Date().toLocaleTimeString()}`;
       item.appendChild(meta);
 
       if (kind === 'chat_image') {
@@ -198,32 +435,223 @@
       return localStream;
     }
 
+    function mapSignalTypeToSocketEvent(type) {
+      if (type === 'chat_text') return 'chat:text';
+      if (type === 'chat_image') return 'chat:image';
+      return `signal:${type}`;
+    }
+
+    function mapSocketEventToSignalType(eventName) {
+      if (eventName === 'chat:text') return 'chat_text';
+      if (eventName === 'chat:image') return 'chat_image';
+      if (eventName.startsWith('signal:')) return eventName.slice('signal:'.length);
+      return eventName;
+    }
+
+    function registerWebSocketHandlers(socket) {
+      socket.on('participant:joined', async (payload) => {
+        await handleEvent({
+          type: 'participant_joined',
+          payload: { participants: payload && payload.participants }
+        });
+      });
+
+      socket.on('participant:left', async (payload) => {
+        await handleEvent({
+          type: 'participant_left',
+          payload: { participants: payload && payload.participants }
+        });
+      });
+
+      ['signal:offer', 'signal:answer', 'signal:candidate', 'signal:hangup', 'chat:text', 'chat:image']
+        .forEach((eventName) => {
+          socket.on(eventName, async (payload) => {
+            const mappedType = mapSocketEventToSignalType(eventName);
+            await handleEvent({ type: mappedType, payload: payload || {} });
+          });
+        });
+
+      socket.on('room:terminated', async (payload) => {
+        const reason = payload && payload.reason ? String(payload.reason) : 'meeting_ended';
+        setStatus(`Meeting ended (${reason}).`, 'bad');
+        await leaveCall(false);
+      });
+
+      socket.on('error:event', (payload) => {
+        const message = payload && payload.message ? String(payload.message) : 'Realtime signaling error';
+        setStatus(message, 'warn');
+      });
+
+      socket.on('disconnect', (reason) => {
+        if (clientId) {
+          setStatus(`Realtime signaling disconnected (${reason || 'unknown'}).`, 'warn');
+        }
+      });
+    }
+
+    async function connectWebSocketSignaling() {
+      if (!socketClientAvailable()) {
+        throw new Error('Socket.IO client unavailable');
+      }
+
+      const tokenResponse = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ display_name: 'Participant' })
+      });
+      const tokenData = await tokenResponse.json();
+      if (!tokenResponse.ok || !tokenData.success || !tokenData.token) {
+        throw new Error((tokenData && tokenData.message) || 'Unable to initialize realtime signaling');
+      }
+
+      const activeWsPath = normalizeWsPath(tokenData.ws_path || defaultWsPath);
+
+      return await new Promise((resolve, reject) => {
+        const socket = window.io({
+          path: activeWsPath,
+          auth: { token: tokenData.token },
+          transports: ['websocket', 'polling'],
+          withCredentials: true,
+        });
+
+        let settled = false;
+        const timeout = setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          socket.disconnect();
+          reject(new Error('Realtime signaling connection timed out'));
+        }, 10000);
+
+        socket.on('connect_error', (error) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          socket.disconnect();
+          reject(new Error((error && error.message) || 'Realtime signaling unavailable'));
+        });
+
+        socket.on('room:joined', (payload) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          wsSocket = socket;
+          registerWebSocketHandlers(socket);
+          resolve({
+            participant_id: payload && payload.participant_id ? payload.participant_id : null,
+            participants: payload && payload.participants ? payload.participants : 1,
+          });
+        });
+      });
+    }
+
+    async function flushPendingCandidates() {
+      if (!peerConnection || !peerConnection.remoteDescription || !peerConnection.remoteDescription.type) {
+        return;
+      }
+
+      while (pendingRemoteCandidates.length) {
+        const payload = pendingRemoteCandidates.shift();
+        try {
+          await peerConnection.addIceCandidate(new RTCIceCandidate(payload));
+        } catch (error) {
+          console.warn('Failed to add queued ICE candidate', error);
+        }
+      }
+    }
+
+    async function handleRemoteCandidate(payload) {
+      if (!payload) return;
+      if (!peerConnection || !peerConnection.remoteDescription || !peerConnection.remoteDescription.type) {
+        pendingRemoteCandidates.push(payload);
+        return;
+      }
+      try {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(payload));
+      } catch (error) {
+        console.warn('Failed to add ICE candidate', error);
+      }
+    }
+
+    function resetPeerConnection() {
+      if (peerConnection) {
+        try {
+          peerConnection.close();
+        } catch (error) {}
+      }
+      peerConnection = null;
+      pendingRemoteCandidates = [];
+      hasRemoteTrack = false;
+      remoteVideo.srcObject = null;
+      setRemotePlaceholderVisible(true, 'Waiting for remote video stream...');
+    }
+
+    async function playRemoteVideoIfPossible() {
+      try {
+        await remoteVideo.play();
+      } catch (error) {
+        setStatus('Remote stream received. Click remote video to resume playback.', 'warn');
+      }
+    }
+
     async function createPeerConnection() {
       if (peerConnection) return peerConnection;
       peerConnection = new RTCPeerConnection(rtcConfig);
+
       if (localStream) {
         localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
       }
+
       peerConnection.ontrack = (event) => {
         if (event.streams && event.streams[0]) {
           remoteVideo.srcObject = event.streams[0];
+          hasRemoteTrack = true;
+          setRemotePlaceholderVisible(false);
+          setStatus('Remote stream connected', 'ok');
+          playRemoteVideoIfPossible();
         }
       };
+
       peerConnection.onicecandidate = async (event) => {
         if (!event.candidate) return;
-        await sendSignal('candidate', event.candidate);
+        try {
+          await sendSignal('candidate', event.candidate);
+        } catch (error) {
+          console.warn('Failed to send ICE candidate', error);
+        }
       };
+
       peerConnection.onconnectionstatechange = () => {
         const state = peerConnection.connectionState || 'connecting';
-        if (state === 'connected') setStatus('Call connected');
-        if (state === 'failed' || state === 'disconnected') setStatus('Connection interrupted');
+        if (state === 'connected') setStatus('Call connected', 'ok');
+        if (state === 'failed' || state === 'disconnected') setStatus('Connection interrupted', 'warn');
       };
+
+      peerConnection.oniceconnectionstatechange = () => {
+        const state = peerConnection.iceConnectionState || 'new';
+        if (state === 'checking') {
+          setStatus('Connecting media...', 'idle');
+        } else if (state === 'connected' || state === 'completed') {
+          setStatus('Media connected', 'ok');
+        } else if (state === 'failed') {
+          setStatus('ICE failed. Configure TURN server for cross-network calls.', 'bad');
+        }
+      };
+
       return peerConnection;
     }
 
     async function sendSignal(type, payload) {
       if (!clientId) return;
-      await fetch(signalUrl, {
+
+      if (signalingTransport === 'websocket') {
+        if (!wsSocket || !wsSocket.connected) {
+          throw new Error('Realtime signaling is disconnected');
+        }
+        wsSocket.emit(mapSignalTypeToSocketEvent(type), payload || {});
+        return;
+      }
+
+      const response = await fetch(signalUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -232,6 +660,9 @@
           payload
         })
       });
+      if (!response.ok) {
+        throw new Error(`Failed to send ${type} signal`);
+      }
     }
 
     async function startOfferIfNeeded() {
@@ -242,38 +673,55 @@
       await pc.setLocalDescription(offer);
       await sendSignal('offer', offer);
       offerSent = true;
-      setStatus('Offer sent, waiting for participant');
+      setStatus('Offer sent, waiting for participant', 'idle');
     }
 
     async function handleEvent(event) {
       if (!event || !event.type) return;
+
       if (event.type === 'participant_joined') {
-        setStatus('Participant joined');
+        const nextParticipants = Number(event.payload && event.payload.participants);
+        if (Number.isFinite(nextParticipants)) {
+          setParticipantCount(nextParticipants);
+        }
+        setStatus('Participant joined', 'ok');
         await startOfferIfNeeded();
         return;
       }
+
       if (event.type === 'participant_left' || event.type === 'hangup') {
-        setStatus('Participant left');
-        if (remoteVideo.srcObject) remoteVideo.srcObject = null;
+        const nextParticipants = Number(event.payload && event.payload.participants);
+        setParticipantCount(Number.isFinite(nextParticipants) ? nextParticipants : 1);
+        setRemotePlaceholderVisible(true, 'Remote participant left. Waiting for rejoin...');
+        setStatus('Participant left', 'warn');
         offerSent = false;
+        resetPeerConnection();
+        await createPeerConnection();
         return;
       }
 
       if (event.type === 'offer') {
         await ensureLocalStream();
+
+        if (peerConnection && peerConnection.signalingState !== 'stable') {
+          resetPeerConnection();
+        }
+
         const pc = await createPeerConnection();
         await pc.setRemoteDescription(new RTCSessionDescription(event.payload));
+        await flushPendingCandidates();
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         await sendSignal('answer', answer);
-        setStatus('Answer sent');
+        setStatus('Answer sent', 'idle');
         return;
       }
 
       if (event.type === 'answer') {
         if (!peerConnection) return;
         await peerConnection.setRemoteDescription(new RTCSessionDescription(event.payload));
-        setStatus('Call connected');
+        await flushPendingCandidates();
+        setStatus('Call connected', 'ok');
         return;
       }
 
@@ -288,23 +736,19 @@
       }
 
       if (event.type === 'candidate') {
-        if (!peerConnection) return;
-        try {
-          await peerConnection.addIceCandidate(new RTCIceCandidate(event.payload));
-        } catch (error) {
-          console.warn('Failed to add ICE candidate', error);
-        }
+        await handleRemoteCandidate(event.payload);
       }
     }
 
     async function pollEvents() {
-      if (!clientId) return;
+      if (!clientId || signalingTransport !== 'polling') return;
       try {
         const response = await fetch(`${eventsUrl}?client_id=${encodeURIComponent(clientId)}&last_event_id=${lastEventId}`);
         if (!response.ok) return;
         const data = await response.json();
         if (!data.success) return;
         lastEventId = data.last_event_id || lastEventId;
+        setParticipantCount(data.participants || 0);
         const events = data.events || [];
         for (const event of events) {
           await handleEvent(event);
@@ -314,66 +758,16 @@
       }
     }
 
-    async function joinCall() {
-      try {
-        await ensureLocalStream();
-        const response = await fetch(joinUrl, { method: 'POST' });
-        const data = await response.json();
-        if (!response.ok || !data.success) {
-          setStatus(data.message || 'Unable to join call');
-          return;
-        }
-
-        clientId = data.client_id;
-        isInitiator = !!data.is_initiator;
-        lastEventId = data.last_event_id || 0;
-
-        joinBtn.disabled = true;
-        leaveBtn.disabled = false;
-        chatInput.disabled = false;
-        sendChatBtn.disabled = false;
-        imageInput.disabled = false;
-        sendImageBtn.disabled = false;
-        setStatus(isInitiator ? 'Waiting for participant' : 'Connected to room');
-
-        pollTimer = setInterval(pollEvents, 1000);
-        await pollEvents();
-        if (isInitiator && data.participants > 1) {
-          await startOfferIfNeeded();
-        }
-      } catch (error) {
-        setStatus('Unable to access camera/microphone');
-      }
+    function enableLiveControls() {
+      joinBtn.disabled = true;
+      leaveBtn.disabled = false;
+      chatInput.disabled = false;
+      sendChatBtn.disabled = false;
+      imageInput.disabled = false;
+      sendImageBtn.disabled = false;
     }
 
-    async function leaveCall() {
-      if (!clientId) return;
-      try {
-        await sendSignal('hangup', {});
-        await fetch(leaveUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ client_id: clientId })
-        });
-      } catch (error) {}
-
-      if (pollTimer) {
-        clearInterval(pollTimer);
-        pollTimer = null;
-      }
-      if (peerConnection) {
-        peerConnection.close();
-        peerConnection = null;
-      }
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-        localStream = null;
-      }
-
-      localVideo.srcObject = null;
-      remoteVideo.srcObject = null;
-      clientId = null;
-      offerSent = false;
+    function disableLiveControls() {
       joinBtn.disabled = false;
       leaveBtn.disabled = true;
       chatInput.disabled = true;
@@ -381,15 +775,137 @@
       imageInput.disabled = true;
       sendImageBtn.disabled = true;
       imageInput.value = '';
+    }
+
+    async function joinViaPolling() {
+      const response = await fetch(joinUrl, { method: 'POST' });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Unable to join call');
+      }
+
+      signalingTransport = 'polling';
+      clientId = data.client_id;
+      isInitiator = !!data.is_initiator;
+      lastEventId = data.last_event_id || 0;
+      pendingRemoteCandidates = [];
+      hasRemoteTrack = false;
+      setRemotePlaceholderVisible(true, 'Waiting for remote video stream...');
+      setParticipantCount(data.participants || 1);
+      enableLiveControls();
+      setStatus(isInitiator ? 'Waiting for participant (fallback polling mode)' : 'Joined room, waiting for offer', 'idle');
+
+      await createPeerConnection();
+      pollTimer = setInterval(pollEvents, 1000);
+      await pollEvents();
+      if (isInitiator && data.participants > 1) {
+        await startOfferIfNeeded();
+      }
+    }
+
+    async function joinViaWebSocket() {
+      const joined = await connectWebSocketSignaling();
+      signalingTransport = 'websocket';
+      clientId = joined.participant_id || `ws-${Date.now()}`;
+      isInitiator = Number(joined.participants || 1) <= 1;
+      pendingRemoteCandidates = [];
+      hasRemoteTrack = false;
+      setRemotePlaceholderVisible(true, 'Waiting for remote video stream...');
+      setParticipantCount(joined.participants || 1);
+      enableLiveControls();
+      setStatus(isInitiator ? 'Waiting for participant (realtime mode)' : 'Joined room, waiting for offer', 'ok');
+
+      await createPeerConnection();
+      if (isInitiator && Number(joined.participants || 1) > 1) {
+        await startOfferIfNeeded();
+      }
+    }
+
+    async function joinCall() {
+      try {
+        await ensureLocalStream();
+        resetPeerConnection();
+        await loadIceConfig();
+
+        if (configuredSignalingMode !== 'polling_only') {
+          try {
+            await joinViaWebSocket();
+          } catch (wsError) {
+            if (configuredSignalingMode === 'ws_only') {
+              throw wsError;
+            }
+            setStatus('Realtime service unavailable, switching to fallback mode...', 'warn');
+            await joinViaPolling();
+          }
+        } else {
+          await joinViaPolling();
+        }
+
+        setTimeout(() => {
+          if (clientId && !hasRemoteTrack) {
+            setStatus('No remote stream yet. Check permissions and network/TURN settings.', 'warn');
+          }
+        }, 10000);
+      } catch (error) {
+        if (error && error.name === 'NotAllowedError') {
+          setStatus('Camera and microphone permission denied', 'bad');
+          return;
+        }
+        setStatus(error && error.message ? error.message : 'Unable to access camera/microphone', 'bad');
+      }
+    }
+
+    async function leaveCall(emitHangup = true) {
+      if (!clientId) return;
+      try {
+        if (emitHangup) {
+          await sendSignal('hangup', {});
+        }
+        if (signalingTransport === 'polling') {
+          await fetch(leaveUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ client_id: clientId })
+          });
+        }
+      } catch (error) {}
+
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+
+      resetPeerConnection();
+
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+      }
+
+      if (wsSocket) {
+        try {
+          wsSocket.disconnect();
+        } catch (error) {}
+      }
+      wsSocket = null;
+
+      localVideo.srcObject = null;
+      clientId = null;
+      offerSent = false;
+      signalingTransport = null;
+      setParticipantCount(1);
+      setRemotePlaceholderVisible(true, 'Waiting for remote video stream...');
+      disableLiveControls();
       toggleMicBtn.disabled = true;
       toggleCameraBtn.disabled = true;
       toggleMicBtn.textContent = 'Mute Mic';
       toggleCameraBtn.textContent = 'Stop Camera';
-      setStatus('Call ended');
+      setStatus('Call ended', 'idle');
     }
 
     joinBtn.addEventListener('click', joinCall);
     leaveBtn.addEventListener('click', leaveCall);
+    remoteVideo.addEventListener('click', playRemoteVideoIfPossible);
 
     toggleMicBtn.addEventListener('click', () => {
       if (!localStream) return;
@@ -410,7 +926,7 @@
     copyLinkBtn.addEventListener('click', async () => {
       try {
         await navigator.clipboard.writeText(roomLink);
-        setStatus('Room link copied');
+        setStatus('Room link copied', 'ok');
       } catch (error) {
         window.prompt('Copy call link:', roomLink);
       }
@@ -428,11 +944,11 @@
       if (!clientId || !imageInput.files || !imageInput.files[0]) return;
       const file = imageInput.files[0];
       if (!file.type.startsWith('image/')) {
-        setStatus('Please choose an image file');
+        setStatus('Please choose an image file', 'warn');
         return;
       }
       if (file.size > 1024 * 1024) {
-        setStatus('Image must be 1MB or smaller');
+        setStatus('Image must be 1MB or smaller', 'warn');
         return;
       }
 
@@ -456,8 +972,13 @@
     sendImageBtn.addEventListener('click', sendImageMessage);
 
     window.addEventListener('beforeunload', () => {
-      if (clientId) {
-        navigator.sendBeacon(leaveUrl, JSON.stringify({ client_id: clientId }));
+      if (!clientId) return;
+      if (signalingTransport === 'polling') {
+        const payload = new Blob([JSON.stringify({ client_id: clientId })], { type: 'application/json' });
+        navigator.sendBeacon(leaveUrl, payload);
+      }
+      if (wsSocket) {
+        wsSocket.disconnect();
       }
     });
   </script>

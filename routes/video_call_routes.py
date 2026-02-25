@@ -1,11 +1,16 @@
+import base64
+import hashlib
+import hmac
+import json
 import secrets
 import threading
 import time
+import uuid
 from datetime import datetime
 
-from flask import jsonify, render_template, request
+from flask import current_app, jsonify, render_template, request
 
-from extensions import csrf
+from extensions import csrf, db
 from models import MeetingLink
 
 _ROOM_LOCK = threading.Lock()
@@ -21,11 +26,68 @@ def _now_ts():
     return int(time.time())
 
 
+def _b64url_encode(raw_bytes):
+    return base64.urlsafe_b64encode(raw_bytes).rstrip(b"=").decode("ascii")
+
+
+def _create_hs256_jwt(payload, secret):
+    header = {"alg": "HS256", "typ": "JWT"}
+    encoded_header = _b64url_encode(json.dumps(header, separators=(",", ":"), sort_keys=True).encode("utf-8"))
+    encoded_payload = _b64url_encode(json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8"))
+    signing_input = f"{encoded_header}.{encoded_payload}".encode("ascii")
+    signature = hmac.new(str(secret).encode("utf-8"), signing_input, hashlib.sha256).digest()
+    encoded_signature = _b64url_encode(signature)
+    return f"{encoded_header}.{encoded_payload}.{encoded_signature}"
+
+
+def _sanitize_display_name(value):
+    text = str(value or "").strip()
+    if not text:
+        return "Participant"
+    return text[:80]
+
+
+def _normalize_turn_urls(raw_value):
+    if isinstance(raw_value, str):
+        return [item.strip() for item in raw_value.split(",") if item.strip()]
+    if isinstance(raw_value, (list, tuple)):
+        return [str(item).strip() for item in raw_value if str(item).strip()]
+    return []
+
+
+def _build_ice_servers():
+    ice_servers = [{"urls": ["stun:stun.l.google.com:19302"]}]
+
+    turn_urls = _normalize_turn_urls(current_app.config.get("VIDEO_TURN_URLS"))
+    if turn_urls:
+        turn_server = {"urls": turn_urls}
+        username = (current_app.config.get("VIDEO_TURN_USERNAME") or "").strip()
+        credential = (current_app.config.get("VIDEO_TURN_CREDENTIAL") or "").strip()
+        if username and credential:
+            turn_server["username"] = username
+            turn_server["credential"] = credential
+        ice_servers.append(turn_server)
+
+    return ice_servers
+
+
+def _internal_request_authorized():
+    configured_token = str(current_app.config.get("VIDEO_SIGNALING_INTERNAL_TOKEN") or "").strip()
+    header_token = str(request.headers.get("X-Internal-Token") or "").strip()
+    return bool(configured_token and header_token and hmac.compare_digest(configured_token, header_token))
+
+
+def _safe_ws_path():
+    path = str(current_app.config.get("VIDEO_WS_PATH") or "/ws/socket.io").strip()
+    if not path.startswith("/"):
+        path = f"/{path}"
+    return path
+
+
 def _cleanup_rooms():
     now = _now_ts()
     stale_rooms = []
     for room_id, room in list(_VIDEO_ROOMS.items()):
-        # Remove stale participants first.
         stale_participants = [
             client_id
             for client_id, participant in room["participants"].items()
@@ -87,7 +149,111 @@ def register_video_call_routes(app):
         meeting = _active_meeting_by_room(room_id)
         if not meeting:
             return render_template("video_call.html", room_id=room_id, case_no=None, active=False), 404
-        return render_template("video_call.html", room_id=room_id, case_no=meeting.case_no, active=True)
+        return render_template(
+            "video_call.html",
+            room_id=room_id,
+            case_no=meeting.case_no,
+            active=True,
+            signaling_mode=app.config.get("VIDEO_SIGNALING_MODE", "hybrid"),
+            ws_path=_safe_ws_path(),
+        )
+
+    @app.route("/api/video-call/<room_id>/token", methods=["POST"])
+    @csrf.exempt
+    def video_call_token(room_id):
+        meeting = _active_meeting_by_room(room_id)
+        if not meeting:
+            return jsonify({"success": False, "message": "Call room is inactive"}), 404
+
+        request_data = request.get_json(silent=True) or {}
+        display_name = _sanitize_display_name(request_data.get("display_name"))
+        ttl = max(60, int(current_app.config.get("VIDEO_SIGNALING_TOKEN_TTL_SECONDS", 300)))
+        now = _now_ts()
+
+        with _ROOM_LOCK:
+            _cleanup_rooms()
+            room = _get_room(room_id, create=False)
+            participants_hint = len(room["participants"]) if room else 1
+
+        payload = {
+            "sub": f"participant-{uuid.uuid4().hex[:12]}",
+            "room_id": room_id,
+            "case_no": meeting.case_no,
+            "display_name": display_name,
+            "iat": now,
+            "exp": now + ttl,
+            "jti": uuid.uuid4().hex,
+        }
+        token = _create_hs256_jwt(payload, current_app.config.get("VIDEO_SIGNALING_JWT_SECRET") or app.secret_key)
+
+        return jsonify(
+            {
+                "success": True,
+                "token": token,
+                "room_id": room_id,
+                "ws_path": _safe_ws_path(),
+                "expires_in": ttl,
+                "participants_hint": participants_hint,
+                "signaling_mode": current_app.config.get("VIDEO_SIGNALING_MODE", "hybrid"),
+            }
+        )
+
+    @app.route("/api/video-call/<room_id>/ice-config", methods=["GET"])
+    @csrf.exempt
+    def video_call_ice_config(room_id):
+        if not _active_meeting_by_room(room_id):
+            return jsonify({"success": False, "message": "Call room is inactive"}), 404
+
+        return jsonify(
+            {
+                "success": True,
+                "ice_servers": _build_ice_servers(),
+                "signaling_mode": current_app.config.get("VIDEO_SIGNALING_MODE", "hybrid"),
+            }
+        )
+
+    @app.route("/internal/video-call/<room_id>/status", methods=["GET"])
+    @csrf.exempt
+    def internal_video_call_status(room_id):
+        if not _internal_request_authorized():
+            return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+        meeting = _active_meeting_by_room(room_id)
+        if not meeting:
+            return jsonify({"active": False, "case_no": None, "ended_at": None})
+
+        ended_at = None
+        if meeting.ended_at:
+            ended_at = meeting.ended_at.isoformat() + "Z"
+
+        return jsonify(
+            {
+                "active": True,
+                "case_no": meeting.case_no,
+                "ended_at": ended_at,
+            }
+        )
+
+    @app.route("/internal/video-call/<room_id>/terminate", methods=["POST"])
+    @csrf.exempt
+    def internal_video_call_terminate(room_id):
+        if not _internal_request_authorized():
+            return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+        meeting = _active_meeting_by_room(room_id)
+        if meeting:
+            meeting.status = "Ended"
+            meeting.ended_at = datetime.utcnow()
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                return jsonify({"success": False, "message": "Failed to terminate room"}), 500
+
+        with _ROOM_LOCK:
+            _VIDEO_ROOMS.pop(room_id, None)
+
+        return jsonify({"success": True, "room_id": room_id, "active": False})
 
     @app.route("/api/video-call/<room_id>/join", methods=["POST"])
     @csrf.exempt

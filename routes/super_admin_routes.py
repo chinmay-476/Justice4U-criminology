@@ -3,7 +3,7 @@ import os
 import secrets
 from datetime import datetime
 
-from flask import flash, jsonify, redirect, render_template, request, session, url_for
+from flask import current_app, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_wtf.csrf import generate_csrf
 from sqlalchemy import func
 from werkzeug.security import check_password_hash
@@ -27,6 +27,7 @@ from security import (
     is_valid_case_no,
     record_login_failure,
 )
+from video_signaling import extract_room_id_from_link, notify_signaling_terminate
 
 
 def _ongoing_meeting_links_by_case():
@@ -42,6 +43,13 @@ def _ongoing_meeting_links_by_case():
         if case_key and case_key not in links and '/video-call/' in link:
             links[case_key] = link
     return links
+
+
+def _notify_room_terminated(link, reason='meeting_ended'):
+    room_id = extract_room_id_from_link(link)
+    if not room_id:
+        return False
+    return notify_signaling_terminate(current_app.config, room_id, reason=reason)
 
 
 
@@ -164,14 +172,18 @@ def register_super_admin_routes(app):
             .filter(func.lower(func.trim(MeetingLink.case_no)) == case_key)
             .all()
         )
+        ended_links = []
         for meeting in existing:
             meeting.status = 'Ended'
             meeting.ended_at = datetime.now()
+            ended_links.append(meeting.link)
 
         new_meeting = MeetingLink(case_no=case_no, link=link, status='Ongoing')
         try:
             db.session.add(new_meeting)
             db.session.commit()
+            for ended_link in ended_links:
+                _notify_room_terminated(ended_link, reason='superseded_by_new_meeting')
             return jsonify({'success': True, 'link': link})
         except Exception:
             db.session.rollback()

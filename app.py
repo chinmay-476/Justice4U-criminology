@@ -29,7 +29,16 @@ def create_app():
         response.headers.setdefault('X-Content-Type-Options', 'nosniff')
         response.headers.setdefault('X-Frame-Options', 'DENY')
         response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
-        response.headers.setdefault('Content-Security-Policy', "default-src 'self' 'unsafe-inline' data: https:;")
+        response.headers.setdefault(
+            'Content-Security-Policy',
+            "default-src 'self' https: data:; "
+            "script-src 'self' 'unsafe-inline' https:; "
+            "style-src 'self' 'unsafe-inline' https:; "
+            "img-src 'self' data: https: blob:; "
+            "media-src 'self' blob: https:; "
+            "connect-src 'self' https: wss: ws:; "
+            "font-src 'self' https: data:;",
+        )
         return response
 
     return app

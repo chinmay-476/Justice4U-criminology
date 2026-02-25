@@ -7,7 +7,7 @@ Flask application for criminal case records, complaint tracking, section/punishm
 - Flask + SQLAlchemy + Flask-WTF
 - Database via `DATABASE_URL` (MySQL default, SQLite optional)
 - Jinja templates + AdminLTE UI
-- WebRTC media + HTTP polling signaling for video calls
+- WebRTC media + Socket.IO signaling (Node.js) with polling fallback
 
 ## Project Layout
 
@@ -17,6 +17,7 @@ Flask application for criminal case records, complaint tracking, section/punishm
 - `models.py`: SQLAlchemy models (`MasterAuth` added)
 - `decorators.py`: role guards
 - `security.py`: validation + login throttling helpers
+- `video_signaling.py`: internal room-id parsing + signaling termination webhooks
 - `routes/`:
   - `public_routes.py`
   - `admin_routes.py`
@@ -24,6 +25,7 @@ Flask application for criminal case records, complaint tracking, section/punishm
   - `judge_routes.py`
   - `video_call_routes.py`
   - `dev_docs_routes.py`
+- `realtime_signaling/`: Node.js Socket.IO service + Redis room store
 - `templates/admin_dev_guide.html`: protected web onboarding guide
 - `tests/test_security_utils.py`
 - `tests/test_auth_dev_docs_video_call.py`
@@ -83,15 +85,24 @@ Behavior:
 Implemented flow:
 
 - UI page: `/video-call/<room_id>`
-- Signaling APIs:
+- Flask signaling/presence fallback APIs:
   - `POST /api/video-call/<room_id>/join`
   - `GET /api/video-call/<room_id>/events`
   - `POST /api/video-call/<room_id>/signal`
   - `POST /api/video-call/<room_id>/leave`
+- Flask realtime bootstrap APIs:
+  - `POST /api/video-call/<room_id>/token`
+  - `GET /api/video-call/<room_id>/ice-config`
+- Flask internal APIs (Node integration):
+  - `GET /internal/video-call/<room_id>/status`
+  - `POST /internal/video-call/<room_id>/terminate`
+- Node Socket.IO endpoint:
+  - `/ws/socket.io` (same-domain reverse proxy recommended)
 - Signal types:
   - `offer`, `answer`, `candidate`, `hangup`
   - `chat_text`, `chat_image`
 - Startup auto-normalizes legacy third-party meeting URLs in ongoing records to in-app `/video-call/<room_id>` links.
+- Judge/super-admin meeting-end flows notify the Node signaling service to terminate active websocket rooms.
 
 UI refinement delivered:
 
@@ -103,7 +114,7 @@ UI refinement delivered:
 
 Known limitation:
 
-- STUN-only (`stun.l.google.com`), no TURN fallback yet; strict NAT environments can fail.
+- TURN is configurable but must be provisioned (`coturn`) for strict NAT/firewall networks.
 - Single-device testing can be done with two browser windows/profiles (normal + incognito) joining the same room.
 
 ## Environment Variables
@@ -116,6 +127,16 @@ Known limitation:
 - `SESSION_COOKIE_SECURE` (enable in HTTPS production)
 - `SESSION_COOKIE_SAMESITE` (default `Lax`)
 - `SESSION_LIFETIME_HOURS` (default `8`)
+- `VIDEO_SIGNALING_MODE` (`hybrid|ws_only|polling_only`, default `hybrid`)
+- `VIDEO_SIGNALING_JWT_SECRET` (JWT signing key for signaling tokens, default `dev-signaling-secret`)
+- `VIDEO_SIGNALING_TOKEN_TTL_SECONDS` (default `300`)
+- `VIDEO_SIGNALING_INTERNAL_TOKEN` (shared internal token between Flask and Node, default `dev-internal-token`)
+- `VIDEO_SIGNALING_INTERNAL_URL` (default `http://127.0.0.1:5050`)
+- `VIDEO_WS_PATH` (default `/ws/socket.io`)
+- `VIDEO_TURN_URLS` (comma-separated TURN URLs)
+- `VIDEO_TURN_USERNAME`
+- `VIDEO_TURN_CREDENTIAL`
+- `VIDEO_ALLOWED_ORIGIN` (optional allowed origin for signaling service)
 
 ### Dev Docs
 
@@ -137,6 +158,8 @@ Known limitation:
 
 ## Run
 
+### Flask app
+
 From `flask_project/criminology/`:
 
 ```bash
@@ -145,6 +168,26 @@ python app.py
 ```
 
 Default URL: `http://127.0.0.1:5000`
+
+### Node signaling service
+
+From `flask_project/criminology/realtime_signaling/`:
+
+```bash
+npm install
+npm run start
+```
+
+Default URL: `http://127.0.0.1:5050` (behind Nginx in production)
+
+### Infra for production reliability
+
+- Redis (room state + rate counters)
+- coturn (TURN relay for cross-network media)
+- Nginx reverse proxy:
+  - `/` -> Flask
+  - `/ws/socket.io` -> Node signaling (websocket upgrade)
+- Example Nginx config: `realtime_signaling/nginx.realtime.conf.example`
 
 ## Tests
 
@@ -155,11 +198,18 @@ python -m unittest tests/test_security_utils.py
 python -m unittest tests/test_auth_dev_docs_video_call.py
 ```
 
+From `flask_project/criminology/realtime_signaling/`:
+
+```bash
+npm test
+```
+
 ## Manual QA Checklist (Video Call)
 
 1. Two browsers in same network: join, text, image, hangup, rejoin.
 2. Permission deny/allow cases for camera and microphone.
-3. Cross-network run (Wi-Fi vs hotspot) to validate NAT behavior.
+3. Cross-network run (Wi-Fi vs hotspot) with TURN to validate NAT behavior.
+4. Stop Node service and verify hybrid fallback uses polling path.
 
 ## Judicial Automation Backlog (Prioritized)
 

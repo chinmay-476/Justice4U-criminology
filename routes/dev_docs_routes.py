@@ -15,6 +15,8 @@ def _guess_auth_requirement(path):
         return 'Super admin session'
     if path.startswith('/judge'):
         return 'Judge session'
+    if path.startswith('/internal/video-call/'):
+        return 'Internal token authentication'
     if path.startswith('/api/video-call/'):
         return 'Room participant (active room)'
     return 'Public or mixed'
@@ -69,40 +71,44 @@ def register_dev_docs_routes(app):
             {'file': 'config.py', 'purpose': 'Environment-driven configuration and ENABLE_DEV_DOCS gate'},
             {'file': 'db_init.py', 'purpose': 'Startup schema checks and master auth seeding'},
             {'file': 'models.py', 'purpose': 'SQLAlchemy table definitions'},
+            {'file': 'video_signaling.py', 'purpose': 'Internal signaling integration helpers for room termination'},
             {'file': 'routes/public_routes.py', 'purpose': 'Public/admin auth endpoints and core CRUD routes'},
             {'file': 'routes/super_admin_routes.py', 'purpose': 'Super-admin workflows and governance routes'},
             {'file': 'routes/judge_routes.py', 'purpose': 'Judge decisioning and meeting controls'},
             {'file': 'routes/video_call_routes.py', 'purpose': 'Video call room + signaling + chat/image relay'},
+            {'file': 'realtime_signaling/src/server.js', 'purpose': 'Node.js Socket.IO signaling service with Redis room state'},
             {'file': 'security.py', 'purpose': 'Validation helpers and login-throttle support'},
         ]
 
         realtime_notes = [
-            'WebRTC media path with STUN server: stun.l.google.com:19302.',
-            'Signaling implemented through HTTP polling (join/events/signal/leave).',
+            'WebRTC media path now supports STUN plus optional TURN from environment.',
+            'Primary signaling uses Socket.IO/WebSocket via Node.js service (`/ws/socket.io`).',
+            'Fallback signaling remains available via HTTP polling (join/events/signal/leave) when mode is hybrid.',
             'Supported signal types: offer, answer, candidate, hangup, chat_text, chat_image.',
-            'No Socket.IO/WebSocket server in current architecture.',
-            'Live-session assumptions retained: room-link access and 1 MB image share cap on client side.',
+            'Realtime state is designed for Redis-backed rooms/participants in the signaling service.',
         ]
 
         video_validation_status = {
-            'date': 'February 23, 2026',
-            'automated': 'API smoke flow passed in isolated test: join/events/signal/leave + chat text/image validation.',
+            'date': 'February 25, 2026',
+            'automated': 'API smoke flow passed for polling endpoints; websocket service includes validation helpers and room termination contract.',
             'limits': [
-                'No browser-level cross-network E2E was executed in this CLI run.',
-                'TURN fallback is not configured, so strict NAT environments can fail.',
+                'Browser-level cross-network E2E still required before production cutover.',
+                'TURN credentials must be configured for strict NAT/firewall environments.',
             ],
             'manual_checklist': [
-                'Two-browser run: permission allow/deny and reconnect behavior.',
-                'Cross-network run: Wi-Fi vs mobile hotspot for NAT verification.',
-                'Hangup and rejoin sequencing under packet loss.',
+                'Two-browser run: websocket primary mode + hybrid fallback behavior.',
+                'Cross-network run: Wi-Fi vs mobile hotspot with TURN enabled.',
+                'Judge end-meeting action terminates active websocket room for all participants.',
             ],
         }
 
         runbook = [
             'pip install -r requirements.txt',
             'python app.py',
+            'cd realtime_signaling && npm install && npm run start',
             'python -m unittest tests/test_security_utils.py',
             'python -m unittest tests/test_auth_dev_docs_video_call.py',
+            'cd realtime_signaling && npm test',
         ]
 
         backlog = [

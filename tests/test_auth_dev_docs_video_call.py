@@ -19,6 +19,10 @@ class AuthDevDocsVideoCallTests(unittest.TestCase):
         cls.app = create_app()
         cls.app.config['TESTING'] = True
         cls.app.config['WTF_CSRF_ENABLED'] = False
+        cls.app.config['VIDEO_SIGNALING_INTERNAL_TOKEN'] = 'test-internal-token'
+        cls.app.config['VIDEO_TURN_URLS'] = ['turn:turn.example.com:3478']
+        cls.app.config['VIDEO_TURN_USERNAME'] = 'turn-user'
+        cls.app.config['VIDEO_TURN_CREDENTIAL'] = 'turn-pass'
         cls.client = cls.app.test_client()
         with cls.app.app_context():
             db.drop_all()
@@ -109,12 +113,39 @@ class AuthDevDocsVideoCallTests(unittest.TestCase):
         inactive = self.client.post('/api/video-call/inactive-room/join')
         self.assertEqual(inactive.status_code, 404)
 
+        token_inactive = self.client.post('/api/video-call/inactive-room/token', json={})
+        self.assertEqual(token_inactive.status_code, 404)
+
         join_one = self.client.post(f'/api/video-call/{room_id}/join')
         self.assertEqual(join_one.status_code, 200)
         one_data = join_one.get_json()
         self.assertTrue(one_data['success'])
         client_one = one_data['client_id']
         self.assertTrue(one_data['is_initiator'])
+
+        token_ok = self.client.post(f'/api/video-call/{room_id}/token', json={'display_name': 'Judge A'})
+        self.assertEqual(token_ok.status_code, 200)
+        token_data = token_ok.get_json()
+        self.assertTrue(token_data['success'])
+        self.assertTrue(bool(token_data['token']))
+        self.assertEqual(token_data['room_id'], room_id)
+        self.assertEqual(token_data['ws_path'], self.app.config['VIDEO_WS_PATH'])
+
+        ice_ok = self.client.get(f'/api/video-call/{room_id}/ice-config')
+        self.assertEqual(ice_ok.status_code, 200)
+        ice_data = ice_ok.get_json()
+        self.assertTrue(ice_data['success'])
+        self.assertTrue(any('turn:turn.example.com:3478' in server['urls'] for server in ice_data['ice_servers']))
+
+        status_unauth = self.client.get(f'/internal/video-call/{room_id}/status')
+        self.assertEqual(status_unauth.status_code, 401)
+
+        status_ok = self.client.get(
+            f'/internal/video-call/{room_id}/status',
+            headers={'X-Internal-Token': 'test-internal-token'},
+        )
+        self.assertEqual(status_ok.status_code, 200)
+        self.assertTrue(status_ok.get_json()['active'])
 
         join_two = self.client.post(f'/api/video-call/{room_id}/join')
         self.assertEqual(join_two.status_code, 200)
@@ -169,6 +200,21 @@ class AuthDevDocsVideoCallTests(unittest.TestCase):
         self.assertTrue(
             any(event['type'] in {'chat_text', 'chat_image', 'participant_left'} for event in events_after_leave['events'])
         )
+
+        terminate_ok = self.client.post(
+            f'/internal/video-call/{room_id}/terminate',
+            headers={'X-Internal-Token': 'test-internal-token'},
+            json={'reason': 'unit_test'},
+        )
+        self.assertEqual(terminate_ok.status_code, 200)
+        self.assertTrue(terminate_ok.get_json()['success'])
+
+        status_after = self.client.get(
+            f'/internal/video-call/{room_id}/status',
+            headers={'X-Internal-Token': 'test-internal-token'},
+        )
+        self.assertEqual(status_after.status_code, 200)
+        self.assertFalse(status_after.get_json()['active'])
 
 
 if __name__ == '__main__':
