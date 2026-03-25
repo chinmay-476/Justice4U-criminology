@@ -124,7 +124,7 @@ class JudgeDecision(db.Model):
     __tablename__ = 'judge_decision'
 
     id = db.Column(db.Integer, primary_key=True)
-    case_no = db.Column(db.String(50), db.ForeignKey('accused.case_no'), nullable=False)
+    case_no = db.Column(db.String(50), db.ForeignKey('accused.case_no'), nullable=False, unique=True)
     status = db.Column(db.String(20), nullable=False, default='Pending')
     workflow_stage = db.Column(db.String(50), nullable=False, default='Filed')
     decided_at = db.Column(db.DateTime, default=datetime.now)
@@ -142,7 +142,58 @@ class MeetingLink(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     case_no = db.Column(db.String(50), db.ForeignKey('accused.case_no'), nullable=False)
+    active_case_key = db.Column(db.String(50), unique=True, nullable=True, index=True)
     link = db.Column(db.String(255), nullable=False)
     status = db.Column(db.String(20), nullable=False, default='Ongoing')
     created_at = db.Column(db.DateTime, default=datetime.now)
     ended_at = db.Column(db.DateTime, nullable=True)
+
+
+class CaseWorkflowEvent(db.Model):
+    __tablename__ = 'case_workflow_event'
+
+    id = db.Column(db.Integer, primary_key=True)
+    case_no = db.Column(db.String(50), db.ForeignKey('accused.case_no'), nullable=False, index=True)
+    actor_role = db.Column(db.String(50), nullable=False, default='system')
+    event_type = db.Column(db.String(50), nullable=False)
+    workflow_stage = db.Column(db.String(50), nullable=False)
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+class FamilyCaseNotification(db.Model):
+    __tablename__ = 'family_case_notification'
+
+    id = db.Column(db.Integer, primary_key=True)
+    case_no = db.Column(db.String(50), db.ForeignKey('accused.case_no'), nullable=False, index=True)
+    title = db.Column(db.String(255), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(30), nullable=False, default='Queued')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    delivered_at = db.Column(db.DateTime, nullable=True)
+
+
+class EvidenceItem(db.Model):
+    __tablename__ = 'evidence_item'
+
+    id = db.Column(db.Integer, primary_key=True)
+    case_no = db.Column(db.String(50), db.ForeignKey('accused.case_no'), nullable=False, index=True)
+    evidence_type = db.Column(db.String(50), nullable=False, default='document')
+    description = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(255), nullable=True)
+    sha256_hash = db.Column(db.String(64), nullable=True, index=True)
+    recorded_by = db.Column(db.String(80), nullable=False, default='system')
+    verification_status = db.Column(db.String(30), nullable=False, default='Recorded')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+class HearingReminder(db.Model):
+    __tablename__ = 'hearing_reminder'
+
+    id = db.Column(db.Integer, primary_key=True)
+    case_no = db.Column(db.String(50), db.ForeignKey('accused.case_no'), nullable=False, index=True)
+    scheduled_for = db.Column(db.DateTime, nullable=False)
+    status = db.Column(db.String(30), nullable=False, default='Pending')
+    note = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)

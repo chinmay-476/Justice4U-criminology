@@ -54,3 +54,6 @@ class Config:
     VIDEO_TURN_USERNAME = os.getenv('VIDEO_TURN_USERNAME', '').strip()
     VIDEO_TURN_CREDENTIAL = os.getenv('VIDEO_TURN_CREDENTIAL', '').strip()
     VIDEO_ALLOWED_ORIGIN = os.getenv('VIDEO_ALLOWED_ORIGIN', '').strip()
+    LOCAL_LLM_ENABLED = _env_bool('LOCAL_LLM_ENABLED', default=True)
+    LOCAL_LLM_BASE_URL = os.getenv('LOCAL_LLM_BASE_URL', 'http://127.0.0.1:11434').strip().rstrip('/')
+    LOCAL_LLM_MODEL = os.getenv('LOCAL_LLM_MODEL', 'llama3.2:3b').strip() or 'llama3.2:3b'
