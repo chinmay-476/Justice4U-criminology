@@ -6,50 +6,91 @@
   <title>Judge - Solved Cases</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    body { background: linear-gradient(180deg, #eef4ff 0%, #f8fafc 100%); }
+    .judge-navbar { background: linear-gradient(135deg, #102a43 0%, #1d4ed8 100%); }
+    .panel-card {
+      border: 0;
+      border-radius: 24px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+    }
+    .status-pill {
+      border-radius: 999px;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: #ecfdf3;
+      color: #047857;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+  </style>
 </head>
-<body class="bg-light">
-  <nav class="navbar navbar-expand-lg navbar-dark" style="background:#1e3c72;">
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark judge-navbar">
     <div class="container">
       <a class="navbar-brand" href="{{ url_for('judge_dashboard') }}"><i class="fas fa-gavel me-2"></i>Judge Panel</a>
-      <div class="ms-auto">
-        <a class="btn btn-outline-light btn-sm" href="{{ url_for('judge_dashboard') }}">Accused Details</a>
-        <a class="btn btn-outline-light btn-sm ms-2" href="{{ url_for('judge_pending') }}">Pending Cases</a>
-        <a class="btn btn-warning btn-sm ms-2" href="{{ url_for('judge_logout') }}">Logout</a>
+      <div class="ms-auto d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-light btn-sm rounded-pill" href="{{ url_for('judge_dashboard') }}">Accused Details</a>
+        <a class="btn btn-outline-light btn-sm rounded-pill" href="{{ url_for('judge_pending') }}">Pending Cases</a>
+        <a class="btn btn-warning btn-sm rounded-pill" href="{{ url_for('judge_logout') }}">Logout</a>
       </div>
     </div>
   </nav>
 
   <div class="container py-4">
-    <h3 class="mb-3">Solved Cases</h3>
+    <div class="card panel-card mb-4">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h3 class="mb-1">Solved and closed matters</h3>
+            <p class="text-muted mb-0">Closed cases keep the decision note, order note, and outward communication note together for later audit or report generation.</p>
+          </div>
+          <span class="badge bg-success rounded-pill px-3 py-2">{{ solved|length }} solved</span>
+        </div>
+      </div>
+    </div>
 
-    <div class="card">
-      <div class="card-body">
+    <div class="card panel-card">
+      <div class="card-body p-4">
         <div class="table-responsive">
-          <table class="table table-striped">
+          <table class="table align-middle">
             <thead>
               <tr>
-                <th>#</th>
                 <th>Name</th>
                 <th>Case No</th>
-                <th>Sections</th>
-                <th>Total Fine</th>
-                <th>Imprisonment</th>
+                <th>Status</th>
+                <th>Fine / Imprisonment</th>
+                <th>Order Note</th>
+                <th>Family Update</th>
               </tr>
             </thead>
             <tbody>
               {% if solved %}
-              {% for person, decision in solved %}
-              <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ person.username }}</td>
-                <td>{{ person.case_no }}</td>
-                <td>{{ person.sections }}</td>
-                <td>{{ decision.total_fine or '-' }}</td>
-                <td>{{ decision.imprisonment or '-' }}</td>
-              </tr>
+                {% for person, decision in solved %}
+                <tr>
+                  <td>
+                    <div class="fw-semibold">{{ person.username }}</div>
+                    <div class="text-muted small">Sections: {{ person.sections }}</div>
+                  </td>
+                  <td>{{ person.case_no }}</td>
+                  <td>
+                    <div class="status-pill"><i class="fas fa-circle-check"></i>{{ decision.workflow_stage or 'Closed' }}</div>
+                    <div class="small text-muted mt-1">{{ decision.decided_at.strftime('%Y-%m-%d %H:%M') if decision.decided_at }}</div>
+                  </td>
+                  <td>
+                    <div><strong>Fine:</strong> {{ decision.total_fine or '-' }}</div>
+                    <div><strong>Imprisonment:</strong> {{ decision.imprisonment or '-' }}</div>
+                  </td>
+                  <td>{{ decision.order_notes or decision.hearing_summary or '-' }}</td>
+                  <td>{{ decision.family_update_note or '-' }}</td>
+                </tr>
+                {% endfor %}
               {% else %}
-              <tr><td colspan="6">No solved cases.</td></tr>
-              {% endfor %}
+              <tr>
+                <td colspan="6" class="text-center py-5 text-muted">No solved cases.</td>
+              </tr>
               {% endif %}
             </tbody>
           </table>

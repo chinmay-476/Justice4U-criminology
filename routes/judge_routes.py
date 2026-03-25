@@ -4,13 +4,14 @@ import secrets
 import re
 from datetime import datetime
 
+from case_workflow import ensure_judge_decision, normalize_case_no
 from flask import current_app, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_wtf.csrf import generate_csrf
 from sqlalchemy import func
 
 from decorators import judge_required
 from extensions import csrf, db
-from models import Accused, JudgeDecision, MeetingLink
+from models import Accused, ComplaintDescription, JudgeDecision, MeetingLink
 from video_signaling import extract_room_id_from_link, notify_signaling_terminate
 from security import (
     check_login_block,
@@ -92,6 +93,40 @@ def _notify_room_terminated(link, reason='meeting_ended'):
     return notify_signaling_terminate(current_app.config, room_id, reason=reason)
 
 
+def _build_decision_map(case_numbers):
+    normalized_case_numbers = [normalize_case_no(case_no) for case_no in case_numbers if normalize_case_no(case_no)]
+    if not normalized_case_numbers:
+        return {}
+    decisions = (
+        JudgeDecision.query
+        .filter(func.lower(func.trim(JudgeDecision.case_no)).in_(normalized_case_numbers))
+        .all()
+    )
+    return {normalize_case_no(decision.case_no): decision for decision in decisions}
+
+
+def _build_complaint_summary_map(case_numbers):
+    normalized_case_numbers = [normalize_case_no(case_no) for case_no in case_numbers if normalize_case_no(case_no)]
+    if not normalized_case_numbers:
+        return {}
+
+    complaints = (
+        ComplaintDescription.query
+        .filter(func.lower(func.trim(ComplaintDescription.case_no)).in_(normalized_case_numbers))
+        .order_by(ComplaintDescription.id.desc())
+        .all()
+    )
+    grouped = {}
+    for complaint in complaints:
+        key = normalize_case_no(complaint.case_no)
+        bucket = grouped.setdefault(key, {'count': 0, 'latest_type': None, 'latest_description': None})
+        bucket['count'] += 1
+        if not bucket['latest_type']:
+            bucket['latest_type'] = complaint.complain_type
+            bucket['latest_description'] = complaint.description
+    return grouped
+
+
 
 def register_judge_routes(app):
     @app.route('/get_meeting_link', methods=['POST'])
@@ -148,6 +183,9 @@ def register_judge_routes(app):
     @judge_required
     def judge_dashboard():
         accused_list = Accused.query.order_by(Accused.case_no.asc()).all()
+        case_numbers = [person.case_no for person in accused_list if person.case_no]
+        decision_by_case = _build_decision_map(case_numbers)
+        complaint_summary_by_case = _build_complaint_summary_map(case_numbers)
 
         ongoing_meetings = MeetingLink.query.filter_by(status='Ongoing').order_by(MeetingLink.created_at.desc()).all()
         meeting_links_by_case = _normalize_meetings_for_case_map(ongoing_meetings)
@@ -157,25 +195,36 @@ def register_judge_routes(app):
             accused=accused_list,
             ongoing_meetings=ongoing_meetings,
             meeting_links_by_case=meeting_links_by_case,
+            decision_by_case=decision_by_case,
+            complaint_summary_by_case=complaint_summary_by_case,
             csrf_token=generate_csrf(),
         )
 
     @app.route('/judge/pending')
     @judge_required
     def judge_pending():
-        pending = (
-            db.session.query(Accused)
+        pending_rows = (
+            db.session.query(Accused, JudgeDecision)
             .join(JudgeDecision, JudgeDecision.case_no == Accused.case_no)
             .filter(JudgeDecision.status == 'Pending')
+            .order_by(Accused.case_no.asc())
             .all()
         )
+        pending_cases = []
+        complaint_summary_by_case = _build_complaint_summary_map([person.case_no for person, _ in pending_rows])
+        for person, decision in pending_rows:
+            pending_cases.append({
+                'accused': person,
+                'decision': decision,
+                'complaints': complaint_summary_by_case.get(normalize_case_no(person.case_no), {}),
+            })
 
         ongoing = MeetingLink.query.filter_by(status='Ongoing').all()
         meeting_links_by_case = _normalize_meetings_for_case_map(ongoing)
 
         return render_template(
             'judge_pending.html',
-            accused=pending,
+            pending_cases=pending_cases,
             meeting_links_by_case=meeting_links_by_case,
             csrf_token=generate_csrf(),
         )
@@ -187,6 +236,7 @@ def register_judge_routes(app):
             db.session.query(Accused, JudgeDecision)
             .join(JudgeDecision, JudgeDecision.case_no == Accused.case_no)
             .filter(JudgeDecision.status == 'Solved')
+            .order_by(JudgeDecision.decided_at.desc())
             .all()
         )
         return render_template('judge_solved.html', solved=solved, csrf_token=generate_csrf())
@@ -201,11 +251,12 @@ def register_judge_routes(app):
 
         decision = JudgeDecision.query.filter_by(case_no=case_no).first()
         if not decision:
-            decision = JudgeDecision(case_no=case_no, status='Solved', decided_at=datetime.now())
+            decision = ensure_judge_decision(case_no, status='Solved', workflow_stage='Closed')
             db.session.add(decision)
         else:
             decision.status = 'Solved'
             decision.decided_at = datetime.now()
+            decision.workflow_stage = 'Closed'
 
         try:
             db.session.commit()
@@ -223,6 +274,11 @@ def register_judge_routes(app):
         decision = request.form.get('decision', '').strip()
         total_fine = request.form.get('total_fine', '').strip()
         imprisonment = request.form.get('imprisonment', '').strip()
+        hearing_summary = request.form.get('hearing_summary', '').strip()
+        evidence_review = request.form.get('evidence_review', '').strip()
+        order_notes = request.form.get('order_notes', '').strip()
+        family_update_note = request.form.get('family_update_note', '').strip()
+        next_hearing_raw = request.form.get('next_hearing_at', '').strip()
 
         if not case_no or decision not in ['Pending', 'Solved']:
             flash('Invalid submission.', 'error')
@@ -234,20 +290,38 @@ def register_judge_routes(app):
             return redirect(url_for('judge_dashboard'))
 
         existing = JudgeDecision.query.filter_by(case_no=case_no).first()
+        next_hearing_at = None
+        if next_hearing_raw:
+            try:
+                next_hearing_at = datetime.strptime(next_hearing_raw, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                flash('Please enter a valid next hearing date and time.', 'error')
+                return redirect(url_for('judge_dashboard'))
+
         if existing:
             existing.status = decision
             existing.decided_at = datetime.now()
             existing.total_fine = total_fine or None
             existing.imprisonment = imprisonment or None
+            existing.hearing_summary = hearing_summary or None
+            existing.evidence_review = evidence_review or None
+            existing.order_notes = order_notes or None
+            existing.family_update_note = family_update_note or None
+            existing.next_hearing_at = next_hearing_at
+            existing.workflow_stage = 'Closed' if decision == 'Solved' else 'Pending Judge Review'
         else:
-            db.session.add(
-                JudgeDecision(
-                    case_no=case_no,
-                    status=decision,
-                    total_fine=total_fine or None,
-                    imprisonment=imprisonment or None,
-                )
+            existing = ensure_judge_decision(
+                case_no,
+                status=decision,
+                workflow_stage='Closed' if decision == 'Solved' else 'Pending Judge Review',
             )
+            existing.total_fine = total_fine or None
+            existing.imprisonment = imprisonment or None
+            existing.hearing_summary = hearing_summary or None
+            existing.evidence_review = evidence_review or None
+            existing.order_notes = order_notes or None
+            existing.family_update_note = family_update_note or None
+            existing.next_hearing_at = next_hearing_at
 
         try:
             db.session.commit()
@@ -255,19 +329,11 @@ def register_judge_routes(app):
         except Exception:
             db.session.rollback()
             flash('Failed to save decision.', 'error')
+            return redirect(url_for('judge_dashboard'))
 
-        accused_list = Accused.query.order_by(Accused.case_no.asc()).all()
-
-        ongoing_meetings = MeetingLink.query.filter_by(status='Ongoing').order_by(MeetingLink.created_at.desc()).all()
-        meeting_links_by_case = _normalize_meetings_for_case_map(ongoing_meetings)
-
-        return render_template(
-            'judge_accused.html',
-            accused=accused_list,
-            ongoing_meetings=ongoing_meetings,
-            meeting_links_by_case=meeting_links_by_case,
-            csrf_token=generate_csrf(),
-        )
+        if decision == 'Solved':
+            return redirect(url_for('judge_solved'))
+        return redirect(url_for('judge_pending'))
 
     @app.route('/judge/save_meeting_link', methods=['POST'])
     @csrf.exempt

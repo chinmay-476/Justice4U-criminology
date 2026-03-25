@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from datetime import date
 
 TEST_DB_FILE = os.path.join(tempfile.gettempdir(), 'criminology_test.sqlite')
 os.environ['DATABASE_URL'] = f"sqlite:///{TEST_DB_FILE.replace(os.sep, '/')}"
@@ -8,7 +9,7 @@ os.environ['DATABASE_URL'] = f"sqlite:///{TEST_DB_FILE.replace(os.sep, '/')}"
 from app import create_app
 from db_init import ensure_master_auth_seed
 from extensions import db
-from models import MeetingLink
+from models import Accused, ComplaintDescription, JudgeDecision, MeetingLink
 from routes import video_call_routes
 from security import _LOGIN_ATTEMPTS
 
@@ -215,6 +216,106 @@ class AuthDevDocsVideoCallTests(unittest.TestCase):
         )
         self.assertEqual(status_after.status_code, 200)
         self.assertFalse(status_after.get_json()['active'])
+
+    def test_complaint_submission_creates_pending_judge_record(self):
+        with self.app.app_context():
+            db.session.add(
+                Accused(
+                    username='Test Accused',
+                    relative_name='Relative',
+                    relation='Father',
+                    dob=date(2000, 1, 1),
+                    gender='Male',
+                    nationality='Indian',
+                    occupation='Worker',
+                    education='Graduate',
+                    permanent_address='Some Address',
+                    temporary_address='',
+                    mobile='9999999999',
+                    email_id='accused@example.com',
+                    case_no='CASE-2026-500',
+                    fir_no='FIR-500',
+                    case_type='Criminal',
+                    ps='Station',
+                )
+            )
+            db.session.commit()
+
+        response = self.client.post(
+            '/complaints',
+            data={
+                'complain_type': 'Crime',
+                'description': 'Initial complaint from victim family.',
+                'case_no': 'CASE-2026-500',
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
+
+        with self.app.app_context():
+            complaint = ComplaintDescription.query.filter_by(case_no='CASE-2026-500').first()
+            decision = JudgeDecision.query.filter_by(case_no='CASE-2026-500').first()
+            self.assertIsNotNone(complaint)
+            self.assertIsNotNone(decision)
+            self.assertEqual(decision.status, 'Pending')
+            self.assertEqual(decision.workflow_stage, 'Complaint Registered')
+
+    def test_judge_submit_decision_persists_structured_notes(self):
+        with self.app.app_context():
+            db.session.add(
+                Accused(
+                    username='Decision Test',
+                    relative_name='Relative',
+                    relation='Mother',
+                    dob=date(1999, 2, 2),
+                    gender='Female',
+                    nationality='Indian',
+                    occupation='Teacher',
+                    education='Graduate',
+                    permanent_address='Address',
+                    temporary_address='',
+                    mobile='8888888888',
+                    email_id='decision@example.com',
+                    case_no='CASE-2026-600',
+                    fir_no='FIR-600',
+                    case_type='Criminal',
+                    ps='Station',
+                )
+            )
+            db.session.commit()
+
+        with self.client.session_transaction() as sess:
+            sess['judge_logged_in'] = True
+            sess['judge_username'] = 'Judge'
+
+        response = self.client.post(
+            '/judge/submit-decision',
+            data={
+                'case_no': 'CASE-2026-600',
+                'decision': 'Pending',
+                'total_fine': '5000',
+                'imprisonment': '1 year',
+                'hearing_summary': 'Witness examined and adjourned for document verification.',
+                'evidence_review': 'Medical report and call detail records reviewed.',
+                'order_notes': 'Matter kept pending for final order after next hearing.',
+                'family_update_note': 'Family informed that the matter is still under judicial review.',
+                'next_hearing_at': '2026-03-30T11:30',
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/judge/pending', response.headers.get('Location', ''))
+
+        with self.app.app_context():
+            decision = JudgeDecision.query.filter_by(case_no='CASE-2026-600').first()
+            self.assertIsNotNone(decision)
+            self.assertEqual(decision.status, 'Pending')
+            self.assertEqual(decision.workflow_stage, 'Pending Judge Review')
+            self.assertEqual(decision.total_fine, '5000')
+            self.assertEqual(decision.imprisonment, '1 year')
+            self.assertIn('Witness examined', decision.hearing_summary)
+            self.assertIn('Medical report', decision.evidence_review)
+            self.assertIn('judicial review', decision.family_update_note)
 
 
 if __name__ == '__main__':

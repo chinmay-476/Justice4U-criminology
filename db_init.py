@@ -2,8 +2,9 @@ import os
 import re
 from datetime import datetime
 
+from case_workflow import ensure_judge_decision, normalize_case_no, promote_stage
 from extensions import db
-from models import Accused, JudgeDecision, MasterAuth, MeetingLink
+from models import Accused, ComplaintDescription, JudgeDecision, MasterAuth, MeetingLink
 from werkzeug.security import generate_password_hash
 
 
@@ -116,6 +117,11 @@ def repair_database_records():
                     changed = True
 
         decisions = JudgeDecision.query.all()
+        complaint_case_keys = {
+            normalize_case_no(row.case_no)
+            for row in ComplaintDescription.query.with_entities(ComplaintDescription.case_no).all()
+            if normalize_case_no(row.case_no)
+        }
         for decision in decisions:
             if decision.case_no and decision.case_no != decision.case_no.strip():
                 decision.case_no = decision.case_no.strip()
@@ -125,6 +131,19 @@ def repair_database_records():
                 normalized_status = 'Pending'
             if decision.status != normalized_status:
                 decision.status = normalized_status
+                changed = True
+            desired_stage = 'Complaint Registered' if normalize_case_no(decision.case_no) in complaint_case_keys else 'Filed'
+            promoted_stage = promote_stage(decision.workflow_stage, desired_stage)
+            if decision.workflow_stage != promoted_stage:
+                decision.workflow_stage = promoted_stage
+                changed = True
+
+        for row in Accused.query.with_entities(Accused.case_no).all():
+            case_no = (row.case_no or '').strip()
+            if not case_no:
+                continue
+            stage = 'Complaint Registered' if normalize_case_no(case_no) in complaint_case_keys else 'Filed'
+            if ensure_judge_decision(case_no, status='Pending', workflow_stage=stage):
                 changed = True
 
         if changed:
@@ -204,6 +223,83 @@ def run_startup_schema_checks():
         ).scalar()
         if col2 == 0:
             db.session.execute(db.text("ALTER TABLE judge_decision ADD COLUMN imprisonment VARCHAR(50) NULL"))
+        col3 = db.session.execute(
+            db.text(
+                """
+                SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'judge_decision'
+                  AND COLUMN_NAME = 'workflow_stage'
+                """
+            )
+        ).scalar()
+        if col3 == 0:
+            db.session.execute(db.text("ALTER TABLE judge_decision ADD COLUMN workflow_stage VARCHAR(50) NOT NULL DEFAULT 'Filed'"))
+
+        col4 = db.session.execute(
+            db.text(
+                """
+                SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'judge_decision'
+                  AND COLUMN_NAME = 'hearing_summary'
+                """
+            )
+        ).scalar()
+        if col4 == 0:
+            db.session.execute(db.text("ALTER TABLE judge_decision ADD COLUMN hearing_summary TEXT NULL"))
+
+        col5 = db.session.execute(
+            db.text(
+                """
+                SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'judge_decision'
+                  AND COLUMN_NAME = 'evidence_review'
+                """
+            )
+        ).scalar()
+        if col5 == 0:
+            db.session.execute(db.text("ALTER TABLE judge_decision ADD COLUMN evidence_review TEXT NULL"))
+
+        col6 = db.session.execute(
+            db.text(
+                """
+                SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'judge_decision'
+                  AND COLUMN_NAME = 'order_notes'
+                """
+            )
+        ).scalar()
+        if col6 == 0:
+            db.session.execute(db.text("ALTER TABLE judge_decision ADD COLUMN order_notes TEXT NULL"))
+
+        col7 = db.session.execute(
+            db.text(
+                """
+                SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'judge_decision'
+                  AND COLUMN_NAME = 'family_update_note'
+                """
+            )
+        ).scalar()
+        if col7 == 0:
+            db.session.execute(db.text("ALTER TABLE judge_decision ADD COLUMN family_update_note TEXT NULL"))
+
+        col8 = db.session.execute(
+            db.text(
+                """
+                SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'judge_decision'
+                  AND COLUMN_NAME = 'next_hearing_at'
+                """
+            )
+        ).scalar()
+        if col8 == 0:
+            db.session.execute(db.text("ALTER TABLE judge_decision ADD COLUMN next_hearing_at DATETIME NULL"))
         db.session.commit()
     except Exception:
         db.session.rollback()

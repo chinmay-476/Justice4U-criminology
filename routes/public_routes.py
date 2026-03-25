@@ -1,6 +1,7 @@
 import re
 from datetime import datetime
 
+from case_workflow import ensure_judge_decision
 from flask import flash, jsonify, redirect, render_template, request, session, url_for
 from flask_wtf.csrf import generate_csrf
 from sqlalchemy import func
@@ -247,6 +248,7 @@ def register_public_routes(app):
 
         try:
             db.session.add(new_accused)
+            ensure_judge_decision(case_no, status='Pending', workflow_stage='Filed')
             db.session.commit()
             flash('Accused added successfully!', 'success')
             return redirect(url_for('user_details'))
@@ -417,6 +419,7 @@ def register_public_routes(app):
                 status='Active',
             )
             db.session.add(complaint)
+            ensure_judge_decision(case_no, status='Pending', workflow_stage='Complaint Registered')
             db.session.commit()
             return redirect('/add_complaint_description')
 

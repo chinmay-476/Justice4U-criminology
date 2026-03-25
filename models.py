@@ -125,10 +125,16 @@ class JudgeDecision(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     case_no = db.Column(db.String(50), db.ForeignKey('accused.case_no'), nullable=False)
-    status = db.Column(db.String(20), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='Pending')
+    workflow_stage = db.Column(db.String(50), nullable=False, default='Filed')
     decided_at = db.Column(db.DateTime, default=datetime.now)
     total_fine = db.Column(db.String(50), nullable=True)
     imprisonment = db.Column(db.String(50), nullable=True)
+    hearing_summary = db.Column(db.Text, nullable=True)
+    evidence_review = db.Column(db.Text, nullable=True)
+    order_notes = db.Column(db.Text, nullable=True)
+    family_update_note = db.Column(db.Text, nullable=True)
+    next_hearing_at = db.Column(db.DateTime, nullable=True)
 
 
 class MeetingLink(db.Model):
